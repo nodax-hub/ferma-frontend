@@ -3,6 +3,7 @@ import { useState, type FormEvent } from 'react';
 import type { CustomerInfo, Order } from '../models/Order';
 import { useCart } from '../store/cart/CartContext';
 import { useOrders } from '../store/orders/OrdersContext';
+import { createId } from '../utils/createId';
 
 const initialCustomerInfo: CustomerInfo = {
     name: '',
@@ -57,7 +58,7 @@ export function CheckoutForm() {
         }
 
         const newOrder: Order = {
-            id: crypto.randomUUID(),
+            id: createId(),
             createdAt: new Date().toISOString(),
             customer: {
                 name: customerInfo.name.trim(),

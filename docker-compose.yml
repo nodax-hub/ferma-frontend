@@ -6,9 +6,6 @@ services:
     container_name: online-shop-frontend
     ports:
       - "80:5173"
-    volumes:
-      - .:/app
-      - /app/node_modules
     environment:
       - CHOKIDAR_USEPOLLING=true
     command: npm run dev -- --host 0.0.0.0
