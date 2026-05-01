@@ -1,0 +1,94 @@
+import { useCart } from '../store/cart/CartContext';
+
+export function Cart() {
+    const {
+        state,
+        totalPrice,
+        totalQuantity,
+        increaseQuantity,
+        decreaseQuantity,
+        removeProduct,
+        clearCart,
+    } = useCart();
+
+    const isEmpty = state.items.length === 0;
+
+    return (
+        <aside className="cart">
+            <div className="cart-header">
+                <h2>Корзина</h2>
+
+                {totalQuantity > 0 && (
+                    <span className="cart-count">{totalQuantity}</span>
+                )}
+            </div>
+
+            {isEmpty ? (
+                <p className="cart-empty">Корзина пока пустая</p>
+            ) : (
+                <>
+                    <div className="cart-items">
+                        {state.items.map((item) => (
+                            <div className="cart-item" key={item.product.id}>
+                                <div className="cart-item-info">
+                                    <div className="cart-item-name">{item.product.name}</div>
+                                    <div className="cart-item-price">
+                                        {formatPrice(item.product.price)}
+                                    </div>
+                                </div>
+
+                                <div className="cart-item-controls">
+                                    <button
+                                        type="button"
+                                        onClick={() => decreaseQuantity(item.product.id)}
+                                    >
+                                        −
+                                    </button>
+
+                                    <span>{item.quantity}</span>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => increaseQuantity(item.product.id)}
+                                    >
+                                        +
+                                    </button>
+                                </div>
+
+                                <button
+                                    className="cart-remove-btn"
+                                    type="button"
+                                    onClick={() => removeProduct(item.product.id)}
+                                >
+                                    Удалить
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="cart-footer">
+                        <div className="cart-total">
+                            <span>Итого:</span>
+                            <strong>{formatPrice(totalPrice)}</strong>
+                        </div>
+
+                        <button
+                            className="cart-clear-btn"
+                            type="button"
+                            onClick={clearCart}
+                        >
+                            Очистить корзину
+                        </button>
+
+                        <a className="checkout-btn" href="#checkout">
+                            Оформить заказ
+                        </a>                    </div>
+                </>
+            )}
+        </aside>
+    );
+}
+
+function formatPrice(value: number): string {
+    return `${value.toFixed(2).replace('.', ',')} ₽`;
+}
