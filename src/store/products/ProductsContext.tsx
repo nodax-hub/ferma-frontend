@@ -6,7 +6,7 @@ import {
     type ReactNode,
 } from 'react';
 
-import type { Product } from '../../models/Product';
+import type { Product, ProductStatus } from '../../models/Product';
 import { StorageService } from '../../utils/storage';
 import {
     initialProductsState,
@@ -20,6 +20,10 @@ type ProductsContextValue = {
     state: ProductsState;
     createProduct: (product: Product) => void;
     deleteProduct: (productId: Product['id']) => void;
+    updateProductStatus: (
+        productId: Product['id'],
+        status: ProductStatus,
+    ) => void;
     clearProducts: () => void;
 };
 
@@ -58,6 +62,16 @@ export function ProductsProvider({ children }: ProductsProviderProps) {
             dispatch({
                 type: 'DELETE_PRODUCT',
                 payload: productId,
+            });
+        },
+
+        updateProductStatus: (productId, status) => {
+            dispatch({
+                type: 'UPDATE_PRODUCT_STATUS',
+                payload: {
+                    productId,
+                    status,
+                },
             });
         },
 

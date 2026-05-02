@@ -2,6 +2,7 @@ import './App.css';
 
 import { useEffect, useState, type FormEvent } from 'react';
 
+import { AdminDashboard } from './components/AdminDashboard';
 import { Cart } from './components/Cart';
 import { CheckoutForm } from './components/CheckoutForm';
 import { OrdersList } from './components/OrdersList';
@@ -55,6 +56,10 @@ function AppRoutes() {
         return <CheckoutPage onNavigate={navigate} />;
     }
 
+    if (path === '/admin') {
+        return <AdminPage onNavigate={navigate} />;
+    }
+
     return <ShopPage onNavigate={navigate} />;
 }
 
@@ -68,13 +73,23 @@ function ShopPage({ onNavigate }: PageProps) {
             <header className="page-header">
                 <h1>Онлайн-магазин</h1>
 
-                <button
-                    className="nav-link-btn"
-                    type="button"
-                    onClick={() => onNavigate('/seller')}
-                >
-                    Продавцу
-                </button>
+                <div className="page-actions">
+                    <button
+                        className="nav-link-btn"
+                        type="button"
+                        onClick={() => onNavigate('/seller')}
+                    >
+                        Продавцу
+                    </button>
+
+                    <button
+                        className="nav-link-btn nav-link-btn-secondary"
+                        type="button"
+                        onClick={() => onNavigate('/admin')}
+                    >
+                        Администратору
+                    </button>
+                </div>
             </header>
 
             <section className="shop-layout">
@@ -88,6 +103,26 @@ function ShopPage({ onNavigate }: PageProps) {
 
                 <Cart onCheckout={() => onNavigate('/checkout')} />
             </section>
+        </main>
+    );
+}
+
+function AdminPage({ onNavigate }: PageProps) {
+    return (
+        <main className="page">
+            <header className="page-header">
+                <h1>Администратор</h1>
+
+                <button
+                    className="nav-link-btn nav-link-btn-secondary"
+                    type="button"
+                    onClick={() => onNavigate('/')}
+                >
+                    В магазин
+                </button>
+            </header>
+
+            <AdminDashboard />
         </main>
     );
 }

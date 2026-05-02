@@ -723,6 +723,132 @@
   font-size: 13px;
 }
 
+.admin-dashboard {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.admin-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: #fff;
+  border-radius: 16px;
+  padding: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.admin-menu-btn {
+  min-height: 40px;
+  border: none;
+  border-radius: 10px;
+  padding: 0 12px;
+  background: transparent;
+  color: #333;
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.admin-menu-btn-active {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.admin-content {
+  min-width: 0;
+}
+
+.admin-panel {
+  background: #fff;
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.admin-panel h2 {
+  margin: 0 0 16px;
+  font-size: 22px;
+}
+
+.admin-empty {
+  margin: 0;
+  color: #777;
+  font-size: 14px;
+}
+
+.admin-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.admin-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  border: 1px solid #eee;
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.admin-list-item h3 {
+  margin: 0 0 6px;
+  font-size: 16px;
+}
+
+.admin-list-item p {
+  margin: 0 0 4px;
+  color: #666;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.admin-item-main {
+  display: flex;
+  gap: 12px;
+  min-width: 0;
+}
+
+.admin-item-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.admin-product-image {
+  width: 72px;
+  height: 72px;
+  border-radius: 10px;
+  object-fit: cover;
+  background: #eee;
+  flex-shrink: 0;
+}
+
+.admin-status {
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: #f1f1f1;
+  color: #333;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.admin-panel select {
+  min-height: 34px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  padding: 0 10px;
+  background: #fff;
+  font: inherit;
+}
+
 .seller-auth {
   min-height: calc(100vh - 120px);
   display: grid;
@@ -752,6 +878,29 @@
 
   .page-actions {
     justify-content: flex-start;
+  }
+
+  .admin-dashboard {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-menu {
+    flex-direction: row;
+    overflow-x: auto;
+  }
+
+  .admin-menu-btn {
+    flex: 0 0 auto;
+    text-align: center;
+  }
+
+  .admin-list-item,
+  .admin-item-main {
+    flex-direction: column;
+  }
+
+  .admin-item-side {
+    align-items: flex-start;
   }
 
   .seller-product-item {

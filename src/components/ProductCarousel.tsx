@@ -3,10 +3,13 @@ import { ProductCard } from './ProductCard';
 
 export function ProductCarousel() {
     const { state } = useProducts();
+    const approvedProducts = state.products.filter(
+        (product) => (product.status ?? 'approved') === 'approved',
+    );
 
     return (
         <section className="carousel" aria-label="Карусель товаров">
-            {state.products.map((product) => (
+            {approvedProducts.map((product) => (
                 <ProductCard key={product.id} product={product} />
             ))}
         </section>

@@ -1,3 +1,5 @@
+export type ProductStatus = 'pending_review' | 'approved' | 'rejected';
+
 export type Product = {
     id: string;
     name: string;
@@ -6,6 +8,7 @@ export type Product = {
     price: number;
     oldPrice?: number;
     imageUrl?: string;
+    status: ProductStatus;
     sellerId: string;
     createdAt: string;
 };

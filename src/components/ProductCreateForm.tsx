@@ -108,6 +108,7 @@ export function ProductCreateForm() {
                 discount ||
                 (oldPrice !== undefined ? calculateDiscount(price, oldPrice) : ''),
             price,
+            status: 'pending_review',
             sellerId: CURRENT_SELLER_ID,
             createdAt: new Date().toISOString(),
         };

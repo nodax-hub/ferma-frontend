@@ -1,4 +1,4 @@
-import type { Product } from '../../models/Product';
+import type { Product, ProductStatus } from '../../models/Product';
 import { initialProducts } from '../../data/products';
 
 export type ProductsState = {
@@ -13,6 +13,13 @@ export type ProductsAction =
     | {
     type: 'DELETE_PRODUCT';
     payload: Product['id'];
+}
+    | {
+    type: 'UPDATE_PRODUCT_STATUS';
+    payload: {
+        productId: Product['id'];
+        status: ProductStatus;
+    };
 }
     | {
     type: 'CLEAR_PRODUCTS';
@@ -39,6 +46,20 @@ export function productsReducer(
                 ...state,
                 products: state.products.filter(
                     (product) => product.id !== action.payload,
+                ),
+            };
+        }
+
+        case 'UPDATE_PRODUCT_STATUS': {
+            return {
+                ...state,
+                products: state.products.map((product) =>
+                    product.id === action.payload.productId
+                        ? {
+                            ...product,
+                            status: action.payload.status,
+                        }
+                        : product,
                 ),
             };
         }

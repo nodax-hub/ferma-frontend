@@ -41,6 +41,10 @@ export function SellerProductsList() {
                                 <div className="seller-product-meta">
                                     Создан: {formatDate(product.createdAt)}
                                 </div>
+
+                                <div className="seller-product-meta">
+                                    Статус: {getProductStatusLabel(product.status)}
+                                </div>
                             </div>
 
                             <div className="seller-product-side">
@@ -73,4 +77,20 @@ function formatDate(value: string): string {
         dateStyle: 'medium',
         timeStyle: 'short',
     }).format(new Date(value));
+}
+
+function getProductStatusLabel(status = 'approved'): string {
+    switch (status) {
+        case 'pending_review':
+            return 'На проверке';
+
+        case 'approved':
+            return 'Подтвержден';
+
+        case 'rejected':
+            return 'Отклонен';
+
+        default:
+            return status;
+    }
 }
