@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useState, type ChangeEvent, type FormEvent } from 'react';
 
 import type { Product } from '../models/Product';
 import { useProducts } from '../store/products/ProductsContext';
@@ -29,6 +29,34 @@ export function ProductCreateForm() {
 
     const [error, setError] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
+    const [imageUrl, setImageUrl] = useState('');
+    const [imageInputKey, setImageInputKey] = useState(0);
+
+    const handleImageChange = async (event: ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+
+        setError('');
+        setSuccessMessage('');
+
+        if (!file) {
+            setImageUrl('');
+            return;
+        }
+
+        if (!file.type.startsWith('image/')) {
+            setImageUrl('');
+            setError('Выберите файл изображения');
+            return;
+        }
+
+        try {
+            const croppedImageUrl = await cropImageToSquare(file);
+            setImageUrl(croppedImageUrl);
+        } catch {
+            setImageUrl('');
+            setError('Не удалось загрузить изображение');
+        }
+    };
 
     const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -88,9 +116,15 @@ export function ProductCreateForm() {
             newProduct.oldPrice = oldPrice;
         }
 
+        if (imageUrl) {
+            newProduct.imageUrl = imageUrl;
+        }
+
         createProduct(newProduct);
 
         setFormState(initialFormState);
+        setImageUrl('');
+        setImageInputKey((current) => current + 1);
         setSuccessMessage('Товар создан');
     };
 
@@ -99,6 +133,33 @@ export function ProductCreateForm() {
             <h2>Создать товар</h2>
 
             <form className="seller-form" onSubmit={handleSubmit}>
+                <label className="form-field">
+                    <span>Изображение товара</span>
+                    <input
+                        key={imageInputKey}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageChange}
+                    />
+                </label>
+
+                {imageUrl && (
+                    <div className="product-image-preview">
+                        <img src={imageUrl} alt="Предпросмотр товара" />
+
+                        <button
+                            className="seller-danger-btn"
+                            type="button"
+                            onClick={() => {
+                                setImageUrl('');
+                                setImageInputKey((current) => current + 1);
+                            }}
+                        >
+                            Удалить изображение
+                        </button>
+                    </div>
+                )}
+
                 <label className="form-field">
                     <span>Название товара</span>
                     <input
@@ -196,4 +257,52 @@ function calculateDiscount(price: number, oldPrice: number): string {
     const discount = Math.round(((oldPrice - price) / oldPrice) * 100);
 
     return `−${discount}%`;
+}
+
+function cropImageToSquare(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const image = new Image();
+        const objectUrl = URL.createObjectURL(file);
+
+        image.onload = () => {
+            const size = Math.min(image.naturalWidth, image.naturalHeight);
+            const sourceX = (image.naturalWidth - size) / 2;
+            const sourceY = (image.naturalHeight - size) / 2;
+            const outputSize = 512;
+
+            const canvas = document.createElement('canvas');
+            canvas.width = outputSize;
+            canvas.height = outputSize;
+
+            const context = canvas.getContext('2d');
+
+            if (!context) {
+                URL.revokeObjectURL(objectUrl);
+                reject(new Error('Canvas is not available'));
+                return;
+            }
+
+            context.drawImage(
+                image,
+                sourceX,
+                sourceY,
+                size,
+                size,
+                0,
+                0,
+                outputSize,
+                outputSize,
+            );
+
+            URL.revokeObjectURL(objectUrl);
+            resolve(canvas.toDataURL('image/jpeg', 0.9));
+        };
+
+        image.onerror = () => {
+            URL.revokeObjectURL(objectUrl);
+            reject(new Error('Image loading failed'));
+        };
+
+        image.src = objectUrl;
+    });
 }

@@ -84,6 +84,13 @@
   flex-shrink: 0;
 }
 
+.product-image {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
 .badge {
   position: absolute;
   top: 8px;
@@ -622,6 +629,23 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.product-image-preview {
+  display: grid;
+  gap: 10px;
+}
+
+.product-image-preview img {
+  width: 160px;
+  height: 160px;
+  border-radius: 12px;
+  object-fit: cover;
+  background: #eee;
+}
+
+.product-image-preview .seller-danger-btn {
+  justify-self: start;
 }
 
 .seller-submit-btn {

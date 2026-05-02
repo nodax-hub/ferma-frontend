@@ -5,6 +5,7 @@ export type Product = {
     discount: string;
     price: number;
     oldPrice?: number;
+    imageUrl?: string;
     sellerId: string;
     createdAt: string;
 };

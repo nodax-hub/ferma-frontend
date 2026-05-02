@@ -18,6 +18,14 @@ export function ProductCard({ product }: ProductCardProps) {
     return (
         <article className="card">
             <div className="card-image">
+                {product.imageUrl && (
+                    <img
+                        className="product-image"
+                        src={product.imageUrl}
+                        alt={product.name}
+                    />
+                )}
+
                 {product.discount && <div className="badge">{product.discount}</div>}
             </div>
 
