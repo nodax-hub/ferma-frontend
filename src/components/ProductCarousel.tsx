@@ -1,10 +1,12 @@
-import { products } from '../data/products';
+import { useProducts } from '../store/products/ProductsContext';
 import { ProductCard } from './ProductCard';
 
 export function ProductCarousel() {
+    const { state } = useProducts();
+
     return (
         <section className="carousel" aria-label="Карусель товаров">
-            {products.map((product) => (
+            {state.products.map((product) => (
                 <ProductCard key={product.id} product={product} />
             ))}
         </section>

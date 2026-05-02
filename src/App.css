@@ -531,3 +531,137 @@
     flex-direction: column;
   }
 }
+
+.seller-dashboard {
+  margin-top: 32px;
+}
+
+.seller-dashboard-title {
+  margin-bottom: 16px;
+}
+
+.seller-dashboard-title h1 {
+  margin: 0;
+  font-size: 28px;
+}
+
+.seller-dashboard-title p {
+  margin: 6px 0 0;
+  color: #777;
+}
+
+.seller-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 360px) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.seller-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.seller-card h2 {
+  margin: 0 0 16px;
+  font-size: 22px;
+}
+
+.seller-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.seller-submit-btn {
+  width: 100%;
+  height: 42px;
+  border: none;
+  border-radius: 999px;
+  background: #4caf50;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.seller-products-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.seller-products-header h2 {
+  margin: 0;
+}
+
+.seller-empty {
+  margin: 0;
+  color: #777;
+  font-size: 14px;
+}
+
+.seller-products-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.seller-product-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  border: 1px solid #eee;
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.seller-product-name {
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.seller-product-meta {
+  color: #777;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.seller-product-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.seller-product-price {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.seller-danger-btn {
+  border: none;
+  background: transparent;
+  color: #c62828;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+@media (max-width: 1100px) {
+  .seller-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .seller-product-item {
+    flex-direction: column;
+  }
+
+  .seller-product-side {
+    align-items: flex-start;
+  }
+}
