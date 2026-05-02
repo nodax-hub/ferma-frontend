@@ -27,6 +27,18 @@ docker compose up --build
 docker compose down
 ```
 
+## Deploy через готовые Docker images
+
+Пример для сервера лежит в `docker-compose.deploy.example.yml`.
+
+Перед запуском замени `SECRET_KEY` на секретное значение:
+
+```powershell
+docker compose -f docker-compose.deploy.example.yml up -d
+```
+
+Watchtower в этом примере обновляет только контейнеры с label `com.centurylinklabs.watchtower.enable=true`.
+
 ## Локальный запуск без Docker
 
 Frontend:

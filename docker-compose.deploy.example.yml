@@ -1,0 +1,45 @@
+services:
+  frontend:
+    image: ghcr.io/nodax-hub/ferma-frontend/frontend:latest
+    container_name: online-shop-frontend
+    ports:
+      - "7777:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  backend:
+    image: ghcr.io/nodax-hub/ferma-frontend/backend:latest
+    container_name: online-shop-backend
+    environment:
+      PROJECT_NAME: Online Shop API
+      DATABASE_URL: sqlite:////app/data/app.db
+      SECRET_KEY: change-me-before-deploy
+      JWT_ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 60
+    ports:
+      - "8888:8000"
+    volumes:
+      - backend_data:/app/data
+    restart: unless-stopped
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  watchtower:
+    image: containrrr/watchtower
+    container_name: watchtower
+    restart: unless-stopped
+    environment:
+      DOCKER_API_VERSION: "1.40"
+      WATCHTOWER_LABEL_ENABLE: "true"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command:
+      - --interval
+      - "20"
+      - --cleanup
+
+volumes:
+  backend_data:
