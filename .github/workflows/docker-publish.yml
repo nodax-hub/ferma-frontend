@@ -1,4 +1,4 @@
-name: Build and publish Docker image
+name: Build and publish Docker images
 
 on:
   push:
@@ -10,8 +10,15 @@ permissions:
   packages: write
 
 jobs:
-  build:
+  build-and-push:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service:
+          - name: frontend
+            context: ./frontend
+          - name: backend
+            context: ./backend
 
     steps:
       - name: Checkout repository
@@ -31,15 +38,15 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository }}
+          images: ghcr.io/${{ github.repository }}/${{ matrix.service.name }}
           tags: |
             type=raw,value=latest
             type=sha
 
-      - name: Build and push Docker image
+      - name: Build and push ${{ matrix.service.name }} image
         uses: docker/build-push-action@v6
         with:
-          context: .
+          context: ${{ matrix.service.context }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
