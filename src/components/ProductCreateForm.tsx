@@ -37,7 +37,10 @@ export function ProductCreateForm() {
         setSuccessMessage('');
 
         const price = Number(formState.price.replace(',', '.'));
-        const oldPrice = Number(formState.oldPrice.replace(',', '.'));
+        const hasOldPrice = formState.oldPrice.trim().length > 0;
+        const oldPrice = hasOldPrice
+            ? Number(formState.oldPrice.replace(',', '.'))
+            : undefined;
 
         if (!formState.name.trim()) {
             setError('Введите название товара');
@@ -54,26 +57,36 @@ export function ProductCreateForm() {
             return;
         }
 
-        if (!Number.isFinite(oldPrice) || oldPrice <= 0) {
+        if (
+            hasOldPrice &&
+            (!Number.isFinite(oldPrice) || oldPrice === undefined || oldPrice <= 0)
+        ) {
             setError('Введите корректную старую цену');
             return;
         }
 
-        if (oldPrice < price) {
+        if (oldPrice !== undefined && oldPrice < price) {
             setError('Старая цена не должна быть меньше текущей цены');
             return;
         }
+
+        const discount = formState.discount.trim();
 
         const newProduct: Product = {
             id: crypto.randomUUID(),
             name: formState.name.trim(),
             tag: formState.tag.trim(),
-            discount: formState.discount.trim() || calculateDiscount(price, oldPrice),
+            discount:
+                discount ||
+                (oldPrice !== undefined ? calculateDiscount(price, oldPrice) : ''),
             price,
-            oldPrice,
             sellerId: CURRENT_SELLER_ID,
             createdAt: new Date().toISOString(),
         };
+
+        if (oldPrice !== undefined) {
+            newProduct.oldPrice = oldPrice;
+        }
 
         createProduct(newProduct);
 
@@ -142,7 +155,7 @@ export function ProductCreateForm() {
                                 oldPrice: event.target.value,
                             }))
                         }
-                        placeholder="234.33"
+                        placeholder="Можно оставить пустым"
                     />
                 </label>
 

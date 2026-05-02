@@ -18,7 +18,7 @@ export function ProductCard({ product }: ProductCardProps) {
     return (
         <article className="card">
             <div className="card-image">
-                <div className="badge">{product.discount}</div>
+                {product.discount && <div className="badge">{product.discount}</div>}
             </div>
 
             <div className="card-content">
@@ -28,7 +28,12 @@ export function ProductCard({ product }: ProductCardProps) {
 
                 <div className="price">
                     <div className="price-new">{formatPrice(product.price)}</div>
-                    <div className="price-old">{formatPrice(product.oldPrice)}</div>
+
+                    {product.oldPrice !== undefined && (
+                        <div className="price-old">
+                            {formatPrice(product.oldPrice)}
+                        </div>
+                    )}
                 </div>
 
                 <div className="button-wrapper">

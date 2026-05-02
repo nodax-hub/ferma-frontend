@@ -4,7 +4,7 @@ export type Product = {
     tag: string;
     discount: string;
     price: number;
-    oldPrice: number;
+    oldPrice?: number;
     sellerId: string;
     createdAt: string;
 };
