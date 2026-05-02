@@ -320,9 +320,16 @@
 
 .bottom-section {
   display: grid;
-  grid-template-columns: minmax(0, 360px) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 24px;
   margin-top: 32px;
+  align-items: start;
+}
+
+.checkout-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 420px) 320px;
+  gap: 24px;
   align-items: start;
 }
 
@@ -554,6 +561,10 @@
 }
 
 @media (max-width: 1100px) {
+  .checkout-layout {
+    grid-template-columns: 1fr;
+  }
+
   .bottom-section {
     grid-template-columns: 1fr;
   }

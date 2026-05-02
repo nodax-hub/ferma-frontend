@@ -51,6 +51,10 @@ function AppRoutes() {
         return <SellerPage onNavigate={navigate} />;
     }
 
+    if (path === '/checkout') {
+        return <CheckoutPage onNavigate={navigate} />;
+    }
+
     return <ShopPage onNavigate={navigate} />;
 }
 
@@ -78,12 +82,37 @@ function ShopPage({ onNavigate }: PageProps) {
                     <ProductCarousel />
 
                     <div className="bottom-section">
-                        <CheckoutForm />
                         <OrdersList />
                     </div>
                 </div>
 
-                <Cart />
+                <Cart onCheckout={() => onNavigate('/checkout')} />
+            </section>
+        </main>
+    );
+}
+
+function CheckoutPage({ onNavigate }: PageProps) {
+    return (
+        <main className="page">
+            <header className="page-header">
+                <div>
+                    <h1>Оформление заказа</h1>
+                    <p>Проверьте корзину и заполните данные доставки</p>
+                </div>
+
+                <button
+                    className="nav-link-btn nav-link-btn-secondary"
+                    type="button"
+                    onClick={() => onNavigate('/')}
+                >
+                    В магазин
+                </button>
+            </header>
+
+            <section className="checkout-layout">
+                <CheckoutForm />
+                <Cart onCheckout={() => undefined} hideCheckoutButton />
             </section>
         </main>
     );

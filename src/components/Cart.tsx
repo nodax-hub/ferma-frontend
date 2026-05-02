@@ -1,6 +1,11 @@
 import { useCart } from '../store/cart/CartContext';
 
-export function Cart() {
+type CartProps = {
+    onCheckout?: () => void;
+    hideCheckoutButton?: boolean;
+};
+
+export function Cart({ onCheckout, hideCheckoutButton = false }: CartProps) {
     const {
         state,
         totalPrice,
@@ -80,9 +85,16 @@ export function Cart() {
                             Очистить корзину
                         </button>
 
-                        <a className="checkout-btn" href="#checkout">
-                            Оформить заказ
-                        </a>                    </div>
+                        {!hideCheckoutButton && (
+                            <button
+                                className="checkout-btn"
+                                type="button"
+                                onClick={onCheckout}
+                            >
+                                Оформить заказ
+                            </button>
+                        )}
+                    </div>
                 </>
             )}
         </aside>
