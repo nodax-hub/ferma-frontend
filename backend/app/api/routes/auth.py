@@ -9,7 +9,7 @@ from app.api.deps import get_current_user, get_db
 from app.core.config import settings
 from app.core.security import create_access_token, get_password_hash, verify_password
 from app.models.user import User
-from app.schemas.auth import Token, UserCreate, UserRead
+from app.schemas.auth import Token, UserCreate, UserRead, UserUpdate
 
 router = APIRouter()
 
@@ -30,6 +30,7 @@ def register_user(
     user = User(
         email=payload.email,
         full_name=payload.full_name,
+        role=payload.role.value,
         hashed_password=get_password_hash(payload.password),
     )
 
@@ -56,6 +57,7 @@ def login_user(
 
     access_token = create_access_token(
         subject=str(user.id),
+        role=user.role,
         expires_delta=timedelta(minutes=settings.access_token_expire_minutes),
     )
 
@@ -64,4 +66,21 @@ def login_user(
 
 @router.get("/me", response_model=UserRead)
 def get_me(current_user: User = Depends(get_current_user)) -> User:
+    return current_user
+
+
+@router.patch("/me", response_model=UserRead)
+def update_me(
+    payload: UserUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> User:
+    current_user.full_name = payload.full_name.strip()
+    current_user.phone = payload.phone.strip()
+    current_user.address = payload.address.strip()
+
+    db.add(current_user)
+    db.commit()
+    db.refresh(current_user)
+
     return current_user

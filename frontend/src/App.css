@@ -47,6 +47,18 @@
   border: 1px solid #ddd;
 }
 
+.user-chip {
+  min-height: 40px;
+  border-radius: 999px;
+  padding: 0 14px;
+  background: #fff;
+  color: #333;
+  display: inline-flex;
+  align-items: center;
+  font-weight: 700;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
 .shop-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
@@ -360,6 +372,36 @@
   gap: 12px;
 }
 
+.checkout-auth-offer {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid #dbe9dc;
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 16px;
+  background: #f6fbf6;
+}
+
+.checkout-auth-offer strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.checkout-auth-offer p {
+  margin: 0;
+  color: #666;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.checkout-auth-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .form-field {
   display: flex;
   flex-direction: column;
@@ -372,7 +414,8 @@
 }
 
 .form-field input,
-.form-field textarea {
+.form-field textarea,
+.form-field select {
   width: 100%;
   border: 1px solid #ddd;
   border-radius: 10px;
@@ -382,9 +425,38 @@
 }
 
 .form-field input:focus,
-.form-field textarea:focus {
+.form-field textarea:focus,
+.form-field select:focus {
   outline: none;
   border-color: #4caf50;
+}
+
+.form-field input.field-invalid,
+.form-field textarea.field-invalid,
+.form-field select.field-invalid {
+  border-color: #c62828;
+  background: #fffafa;
+}
+
+.form-field input.field-invalid:focus,
+.form-field textarea.field-invalid:focus,
+.form-field select.field-invalid:focus {
+  border-color: #c62828;
+  box-shadow: 0 0 0 3px rgba(198, 40, 40, 0.12);
+}
+
+.field-error,
+.field-hint {
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.field-error {
+  color: #c62828;
+}
+
+.field-hint {
+  color: #777;
 }
 
 .form-error {
@@ -580,6 +652,14 @@
 @media (max-width: 768px) {
   .bottom-section {
     margin-top: 24px;
+  }
+
+  .checkout-auth-offer {
+    flex-direction: column;
+  }
+
+  .checkout-auth-actions {
+    justify-content: flex-start;
   }
 
   .order-main,
@@ -863,6 +943,11 @@
   margin: -8px 0 16px;
   color: #777;
   font-size: 14px;
+}
+
+.auth-actions {
+  display: grid;
+  gap: 10px;
 }
 
 @media (max-width: 1100px) {

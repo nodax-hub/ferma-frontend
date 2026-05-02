@@ -16,10 +16,11 @@ def get_password_hash(password: str) -> str:
     return password_context.hash(password)
 
 
-def create_access_token(subject: str, expires_delta: timedelta) -> str:
+def create_access_token(subject: str, role: str, expires_delta: timedelta) -> str:
     expire = datetime.now(timezone.utc) + expires_delta
     payload = {
         "sub": subject,
+        "role": role,
         "exp": expire,
     }
 

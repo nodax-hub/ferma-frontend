@@ -1,6 +1,7 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 
 import type { CustomerInfo, Order } from '../models/Order';
+import { useAuth } from '../store/auth/AuthContext';
 import { useCart } from '../store/cart/CartContext';
 import { useOrders } from '../store/orders/OrdersContext';
 import { createId } from '../utils/createId';
@@ -12,7 +13,11 @@ const initialCustomerInfo: CustomerInfo = {
     comment: '',
 };
 
-export function CheckoutForm() {
+type CheckoutFormProps = {
+    onNavigate: (path: string) => void;
+};
+
+export function CheckoutForm({ onNavigate }: CheckoutFormProps) {
     const [customerInfo, setCustomerInfo] = useState<CustomerInfo>(
         initialCustomerInfo,
     );
@@ -28,8 +33,22 @@ export function CheckoutForm() {
     } = useCart();
 
     const { createOrder } = useOrders();
+    const { user } = useAuth();
 
     const isCartEmpty = cartState.items.length === 0;
+
+    useEffect(() => {
+        if (!user) {
+            return;
+        }
+
+        setCustomerInfo((current) => ({
+            ...current,
+            name: current.name || user.full_name,
+            phone: current.phone || user.phone,
+            address: current.address || user.address,
+        }));
+    }, [user]);
 
     const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -84,6 +103,56 @@ export function CheckoutForm() {
     return (
         <section className="checkout" id="checkout">
             <h2>Оформление заказа</h2>
+
+            {!user && (
+                <div className="checkout-auth-offer">
+                    <div>
+                        <strong>Есть аккаунт?</strong>
+                        <p>
+                            Войдите или зарегистрируйтесь, и данные доставки будут
+                            подставляться автоматически.
+                        </p>
+                    </div>
+
+                    <div className="checkout-auth-actions">
+                        <button
+                            className="nav-link-btn nav-link-btn-secondary"
+                            type="button"
+                            onClick={() => onNavigate('/login')}
+                        >
+                            Войти
+                        </button>
+
+                        <button
+                            className="nav-link-btn"
+                            type="button"
+                            onClick={() => onNavigate('/register')}
+                        >
+                            Регистрация
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {user && (!user.phone || !user.address) && (
+                <div className="checkout-auth-offer">
+                    <div>
+                        <strong>Заполните профиль</strong>
+                        <p>
+                            Телефон и адрес можно сохранить в профиле, чтобы не
+                            вводить их каждый раз.
+                        </p>
+                    </div>
+
+                    <button
+                        className="nav-link-btn nav-link-btn-secondary"
+                        type="button"
+                        onClick={() => onNavigate('/profile')}
+                    >
+                        Открыть профиль
+                    </button>
+                </div>
+            )}
 
             <form className="checkout-form" onSubmit={handleSubmit}>
                 <label className="form-field">

@@ -16,9 +16,10 @@ services:
     environment:
       PROJECT_NAME: Online Shop API
       DATABASE_URL: sqlite:////app/data/app.db
-      SECRET_KEY: change-me-before-deploy
+      SECRET_KEY: CHANGE-ME-BEFORE-DEPLOY
       JWT_ALGORITHM: HS256
       ACCESS_TOKEN_EXPIRE_MINUTES: 60
+      BACKEND_CORS_ORIGINS: http://localhost:7777
     ports:
       - "8888:8000"
     volumes:

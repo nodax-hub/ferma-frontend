@@ -21,6 +21,8 @@ docker compose up --build
 - backend healthcheck: `http://localhost:8888/health`
 - backend docs: `http://localhost:8888/docs`
 
+Frontend обращается к backend через относительный путь `/api`.
+
 Остановить:
 
 ```powershell
