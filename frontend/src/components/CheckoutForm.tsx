@@ -1,10 +1,11 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 
 import type { CustomerInfo, Order } from '../models/Order';
 import { useAuth } from '../store/auth/AuthContext';
 import { useCart } from '../store/cart/CartContext';
 import { useOrders } from '../store/orders/OrdersContext';
 import { createId } from '../utils/createId';
+import { getSelectedBuyerAddress } from '../utils/buyerAddresses';
 
 const initialCustomerInfo: CustomerInfo = {
     name: '',
@@ -34,21 +35,19 @@ export function CheckoutForm({ onNavigate }: CheckoutFormProps) {
 
     const { createOrder } = useOrders();
     const { user } = useAuth();
+    const selectedAddress = getSelectedBuyerAddress();
+    const formCustomerInfo: CustomerInfo = {
+        ...customerInfo,
+        name: customerInfo.name || user?.full_name || '',
+        phone: customerInfo.phone || user?.phone || '',
+        address:
+            customerInfo.address ||
+            selectedAddress?.value ||
+            user?.address ||
+            '',
+    };
 
     const isCartEmpty = cartState.items.length === 0;
-
-    useEffect(() => {
-        if (!user) {
-            return;
-        }
-
-        setCustomerInfo((current) => ({
-            ...current,
-            name: current.name || user.full_name,
-            phone: current.phone || user.phone,
-            address: current.address || user.address,
-        }));
-    }, [user]);
 
     const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -61,17 +60,17 @@ export function CheckoutForm({ onNavigate }: CheckoutFormProps) {
             return;
         }
 
-        if (!customerInfo.name.trim()) {
+        if (!formCustomerInfo.name.trim()) {
             setError('Введите имя');
             return;
         }
 
-        if (!customerInfo.phone.trim()) {
+        if (!formCustomerInfo.phone.trim()) {
             setError('Введите телефон');
             return;
         }
 
-        if (!customerInfo.address.trim()) {
+        if (!formCustomerInfo.address.trim()) {
             setError('Введите адрес доставки');
             return;
         }
@@ -80,10 +79,10 @@ export function CheckoutForm({ onNavigate }: CheckoutFormProps) {
             id: createId(),
             createdAt: new Date().toISOString(),
             customer: {
-                name: customerInfo.name.trim(),
-                phone: customerInfo.phone.trim(),
-                address: customerInfo.address.trim(),
-                comment: customerInfo.comment.trim(),
+                name: formCustomerInfo.name.trim(),
+                phone: formCustomerInfo.phone.trim(),
+                address: formCustomerInfo.address.trim(),
+                comment: formCustomerInfo.comment.trim(),
             },
             items: cartState.items.map((item) => ({
                 product: item.product,
@@ -159,7 +158,7 @@ export function CheckoutForm({ onNavigate }: CheckoutFormProps) {
                     <span>Имя</span>
                     <input
                         type="text"
-                        value={customerInfo.name}
+                        value={formCustomerInfo.name}
                         onChange={(event) =>
                             setCustomerInfo((current) => ({
                                 ...current,
@@ -174,7 +173,7 @@ export function CheckoutForm({ onNavigate }: CheckoutFormProps) {
                     <span>Телефон</span>
                     <input
                         type="tel"
-                        value={customerInfo.phone}
+                        value={formCustomerInfo.phone}
                         onChange={(event) =>
                             setCustomerInfo((current) => ({
                                 ...current,
@@ -189,7 +188,7 @@ export function CheckoutForm({ onNavigate }: CheckoutFormProps) {
                     <span>Адрес доставки</span>
                     <input
                         type="text"
-                        value={customerInfo.address}
+                        value={formCustomerInfo.address}
                         onChange={(event) =>
                             setCustomerInfo((current) => ({
                                 ...current,

@@ -5,6 +5,7 @@ import {
     useState,
     type Dispatch,
     type FormEvent,
+    type ReactNode,
     type SetStateAction,
 } from 'react';
 
@@ -16,9 +17,14 @@ import { ProductCarousel } from './components/ProductCarousel';
 import { SellerDashboard } from './components/SellerDashboard';
 import type { RegisterPayload, UserRole } from './api/client';
 import { AuthProvider, useAuth } from './store/auth/AuthContext';
-import { CartProvider } from './store/cart/CartContext';
+import { CartProvider, useCart } from './store/cart/CartContext';
 import { OrdersProvider } from './store/orders/OrdersContext';
 import { ProductsProvider } from './store/products/ProductsContext';
+import {
+    loadBuyerAddresses,
+    saveBuyerAddresses,
+    type BuyerAddress,
+} from './utils/buyerAddresses';
 
 function App() {
     return (
@@ -78,6 +84,18 @@ function AppRoutes() {
         return <ProfilePage onNavigate={navigate} />;
     }
 
+    if (path === '/orders') {
+        return <BuyerOrdersPage onNavigate={navigate} />;
+    }
+
+    if (path === '/cart') {
+        return <BuyerCartPage onNavigate={navigate} />;
+    }
+
+    if (path === '/addresses') {
+        return <BuyerAddressesPage onNavigate={navigate} />;
+    }
+
     return <ShopPage onNavigate={navigate} />;
 }
 
@@ -86,70 +104,35 @@ type PageProps = {
 };
 
 function ShopPage({ onNavigate }: PageProps) {
-    const { user, logout } = useAuth();
+    const { user } = useAuth();
 
     return (
         <main className="page">
-            <header className="page-header">
-                <h1>Онлайн-магазин</h1>
+            <header className="page-header buyer-header">
+                <div className="brand-block">
+                    <span className="brand-name">ферма</span>
+                    <span className="brand-subtitle">фермерские продукты</span>
+                </div>
 
                 <div className="page-actions">
-                    {user ? (
-                        <>
-                            <span className="user-chip">
-                                {user.full_name} · {getRoleLabel(user.role)}
-                            </span>
-
-                            <button
-                                className="nav-link-btn nav-link-btn-secondary"
-                                type="button"
-                                onClick={() => onNavigate('/profile')}
-                            >
-                                Профиль
-                            </button>
-
-                            <button
-                                className="nav-link-btn nav-link-btn-secondary"
-                                type="button"
-                                onClick={logout}
-                            >
-                                Выйти
-                            </button>
-                        </>
-                    ) : (
-                        <>
-                            <button
-                                className="nav-link-btn nav-link-btn-secondary"
-                                type="button"
-                                onClick={() => onNavigate('/login')}
-                            >
-                                Войти
-                            </button>
-
-                            <button
-                                className="nav-link-btn"
-                                type="button"
-                                onClick={() => onNavigate('/register')}
-                            >
-                                Регистрация
-                            </button>
-                        </>
-                    )}
-
                     <button
-                        className="nav-link-btn"
+                        className="icon-nav-btn"
                         type="button"
-                        onClick={() => onNavigate('/seller')}
+                        aria-label="Заказы"
+                        title="Заказы"
+                        onClick={() => onNavigate('/orders')}
                     >
-                        Продавцу
+                        <ClipboardIcon />
                     </button>
 
                     <button
-                        className="nav-link-btn nav-link-btn-secondary"
+                        className="icon-nav-btn"
                         type="button"
-                        onClick={() => onNavigate('/admin')}
+                        aria-label="Личный кабинет"
+                        title="Личный кабинет"
+                        onClick={() => onNavigate(user ? '/profile' : '/login')}
                     >
-                        Администратору
+                        <UserBustIcon />
                     </button>
                 </div>
             </header>
@@ -157,10 +140,6 @@ function ShopPage({ onNavigate }: PageProps) {
             <section className="shop-layout">
                 <div className="products-section">
                     <ProductCarousel />
-
-                    <div className="bottom-section">
-                        <OrdersList />
-                    </div>
                 </div>
 
                 <Cart onCheckout={() => onNavigate('/checkout')} />
@@ -370,160 +349,580 @@ function SellerAuthPrompt({ onNavigate }: PageProps) {
 }
 
 function ProfilePage({ onNavigate }: PageProps) {
-    const { user, updateProfile, isLoading } = useAuth();
-    const [fullName, setFullName] = useState(user?.full_name ?? '');
-    const [phone, setPhone] = useState(user?.phone ?? '');
-    const [address, setAddress] = useState(user?.address ?? '');
-    const [error, setError] = useState('');
-    const [successMessage, setSuccessMessage] = useState('');
-    const [isSubmitting, setIsSubmitting] = useState(false);
+    const { user, logout, isLoading } = useAuth();
 
-    useEffect(() => {
-        setFullName(user?.full_name ?? '');
-        setPhone(user?.phone ?? '');
-        setAddress(user?.address ?? '');
-    }, [user]);
+    return (
+        <main className="page">
+            <header className="page-header buyer-header">
+                <div>
+                    <h1>Личный кабинет</h1>
+                    {user && <p>{formatBuyerLine(user.full_name, user.phone)}</p>}
+                </div>
 
-    const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+                <div className="page-actions">
+                    {user && (
+                        <button
+                            className="nav-link-btn nav-link-btn-secondary"
+                            type="button"
+                            onClick={logout}
+                        >
+                            Выйти
+                        </button>
+                    )}
+
+                    <button
+                        className="nav-link-btn nav-link-btn-secondary"
+                        type="button"
+                        onClick={() => onNavigate('/')}
+                    >
+                        <HomeIcon />
+                        На главную
+                    </button>
+                </div>
+            </header>
+
+            {isLoading ? (
+                <BuyerCenteredPanel title="Загружаем профиль" />
+            ) : !user ? (
+                <BuyerAuthPrompt onNavigate={onNavigate} />
+            ) : (
+                <section className="buyer-profile-layout">
+                    <div className="buyer-profile-summary">
+                        <div className="buyer-avatar">
+                            <UserBustIcon />
+                        </div>
+
+                        <div>
+                            <h2>{user.full_name}</h2>
+                            <p>{user.phone || 'Телефон не указан'}</p>
+                        </div>
+                    </div>
+
+                    <div className="buyer-menu">
+                        <BuyerMenuButton
+                            title="История заказов"
+                            description="Активные, отменённые и завершённые заказы"
+                            onClick={() => onNavigate('/orders')}
+                            icon={<ClipboardIcon />}
+                        />
+
+                        <BuyerMenuButton
+                            title="Корзина"
+                            description="Выбранные товары и оформление заказа"
+                            onClick={() => onNavigate('/cart')}
+                            icon={<CartIcon />}
+                        />
+
+                        <BuyerMenuButton
+                            title="Мои адреса"
+                            description="Адрес для быстрого выбора при доставке"
+                            onClick={() => onNavigate('/addresses')}
+                            icon={<PinIcon />}
+                        />
+                    </div>
+                </section>
+            )}
+        </main>
+    );
+}
+
+function BuyerOrdersPage({ onNavigate }: PageProps) {
+    const { user, isLoading } = useAuth();
+
+    return (
+        <main className="page">
+            <BuyerPageHeader
+                title="История заказов"
+                userLine={user ? formatBuyerLine(user.full_name, user.phone) : ''}
+                onNavigate={onNavigate}
+                backToProfile
+            />
+
+            {isLoading ? (
+                <BuyerCenteredPanel title="Загружаем заказы" />
+            ) : !user ? (
+                <BuyerAuthPrompt onNavigate={onNavigate} />
+            ) : (
+                <section className="buyer-content-narrow">
+                    <OrdersList />
+                </section>
+            )}
+        </main>
+    );
+}
+
+function BuyerCartPage({ onNavigate }: PageProps) {
+    const { user } = useAuth();
+    const {
+        state,
+        totalPrice,
+        totalQuantity,
+        increaseQuantity,
+        decreaseQuantity,
+        removeProduct,
+    } = useCart();
+
+    const isEmpty = state.items.length === 0;
+
+    return (
+        <main className="page">
+            <BuyerPageHeader
+                title="Корзина"
+                userLine={user ? formatBuyerLine(user.full_name, user.phone) : ''}
+                onNavigate={onNavigate}
+                backToProfile
+            />
+
+            <section className="buyer-content-narrow">
+                <div className="buyer-page-panel">
+                    {isEmpty ? (
+                        <p className="cart-empty">Корзина пока пустая</p>
+                    ) : (
+                        <>
+                            <div className="buyer-cart-list">
+                                {state.items.map((item) => (
+                                    <article
+                                        className="buyer-cart-item"
+                                        key={item.product.id}
+                                    >
+                                        {item.product.imageUrl && (
+                                            <img
+                                                src={item.product.imageUrl}
+                                                alt={item.product.name}
+                                            />
+                                        )}
+
+                                        <div className="buyer-cart-item-main">
+                                            <h3>{item.product.name}</h3>
+                                            <p>{formatPrice(item.product.price)}</p>
+                                        </div>
+
+                                        <div className="cart-item-controls">
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    decreaseQuantity(item.product.id)
+                                                }
+                                            >
+                                                -
+                                            </button>
+
+                                            <span>{item.quantity}</span>
+
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    increaseQuantity(item.product.id)
+                                                }
+                                            >
+                                                +
+                                            </button>
+                                        </div>
+
+                                        <button
+                                            className="cart-remove-btn"
+                                            type="button"
+                                            onClick={() =>
+                                                removeProduct(item.product.id)
+                                            }
+                                        >
+                                            Удалить
+                                        </button>
+                                    </article>
+                                ))}
+                            </div>
+
+                            <div className="buyer-cart-footer">
+                                <div>
+                                    <span>{totalQuantity} шт.</span>
+                                    <strong>{formatPrice(totalPrice)}</strong>
+                                </div>
+
+                                <button
+                                    className="checkout-btn"
+                                    type="button"
+                                    onClick={() => onNavigate('/checkout')}
+                                >
+                                    Оформить
+                                </button>
+                            </div>
+                        </>
+                    )}
+                </div>
+            </section>
+        </main>
+    );
+}
+
+function BuyerAddressesPage({ onNavigate }: PageProps) {
+    const { user, isLoading } = useAuth();
+    const [addresses, setAddresses] = useState<BuyerAddress[]>(() =>
+        loadBuyerAddresses(),
+    );
+    const fallbackAddress = user?.address
+        ? createProfileAddress(user.address)
+        : null;
+    const visibleAddresses = addresses.length > 0
+        ? addresses
+        : fallbackAddress
+          ? [fallbackAddress]
+          : [];
+    const [editingAddress, setEditingAddress] = useState<BuyerAddress | null>(null);
+    const [draftLabel, setDraftLabel] = useState('');
+    const [draftValue, setDraftValue] = useState('');
+    const isEditing = Boolean(editingAddress);
+
+    const persistAddresses = (nextAddresses: BuyerAddress[]) => {
+        setAddresses(nextAddresses);
+        saveBuyerAddresses(nextAddresses);
+    };
+
+    const selectAddress = (addressId: string) => {
+        persistAddresses(
+            visibleAddresses.map((address) => ({
+                ...address,
+                isSelected: address.id === addressId,
+            })),
+        );
+    };
+
+    const startEditAddress = (address: BuyerAddress) => {
+        setEditingAddress(address);
+        setDraftLabel(address.label);
+        setDraftValue(address.value);
+    };
+
+    const startAddAddress = () => {
+        setEditingAddress(null);
+        setDraftLabel('');
+        setDraftValue('');
+    };
+
+    const handleAddressSubmit = (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        setError('');
-        setSuccessMessage('');
 
-        if (fullName.trim().length < 2) {
-            setError('Введите имя: минимум 2 символа');
+        const label = draftLabel.trim() || 'Адрес доставки';
+        const value = draftValue.trim();
+
+        if (!value) {
             return;
         }
 
-        setIsSubmitting(true);
-
-        try {
-            await updateProfile({
-                full_name: fullName.trim(),
-                phone: phone.trim(),
-                address: address.trim(),
-            });
-
-            setSuccessMessage('Профиль сохранен');
-        } catch (caughtError) {
-            setError(
-                caughtError instanceof Error
-                    ? caughtError.message
-                    : 'Не удалось сохранить профиль',
+        if (editingAddress) {
+            persistAddresses(
+                visibleAddresses.map((address) =>
+                    address.id === editingAddress.id
+                        ? {
+                            ...address,
+                            label,
+                            value,
+                        }
+                        : address,
+                ),
             );
-        } finally {
-            setIsSubmitting(false);
+        } else {
+            persistAddresses([
+                ...visibleAddresses.map((address) => ({
+                    ...address,
+                    isSelected: false,
+                })),
+                {
+                    id: crypto.randomUUID(),
+                    label,
+                    value,
+                    isSelected: true,
+                },
+            ]);
         }
+
+        setEditingAddress(null);
+        setDraftLabel('');
+        setDraftValue('');
     };
 
     return (
         <main className="page">
-            <header className="page-header">
-                <div>
-                    <h1>Профиль</h1>
-                    <p>Контактные данные будут подставляться при оформлении заказа</p>
-                </div>
+            <BuyerPageHeader
+                title="Мои адреса"
+                userLine={user ? formatBuyerLine(user.full_name, user.phone) : ''}
+                onNavigate={onNavigate}
+                backToProfile
+            />
+
+            {isLoading ? (
+                <BuyerCenteredPanel title="Загружаем адреса" />
+            ) : !user ? (
+                <BuyerAuthPrompt onNavigate={onNavigate} />
+            ) : (
+                <section className="buyer-address-layout">
+                    <div className="buyer-page-panel">
+                        {visibleAddresses.length === 0 ? (
+                            <p className="cart-empty">Адреса пока не добавлены</p>
+                        ) : (
+                            <div className="buyer-address-list">
+                                {visibleAddresses.map((address) => (
+                                    <article
+                                        className="buyer-address-item"
+                                        key={address.id}
+                                    >
+                                        <button
+                                            className={
+                                                address.isSelected
+                                                    ? 'address-radio address-radio-selected'
+                                                    : 'address-radio'
+                                            }
+                                            type="button"
+                                            aria-label="Выбрать адрес"
+                                            onClick={() => selectAddress(address.id)}
+                                        />
+
+                                        <div>
+                                            <h3>{address.label}</h3>
+                                            <p>{address.value}</p>
+                                        </div>
+
+                                        <button
+                                            className="icon-nav-btn icon-nav-btn-small"
+                                            type="button"
+                                            aria-label="Редактировать адрес"
+                                            title="Редактировать адрес"
+                                            onClick={() => startEditAddress(address)}
+                                        >
+                                            <PencilIcon />
+                                        </button>
+                                    </article>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    <form className="buyer-page-panel seller-form" onSubmit={handleAddressSubmit}>
+                        <h2>{isEditing ? 'Редактировать адрес' : 'Новый адрес'}</h2>
+
+                        <label className="form-field">
+                            <span>Название</span>
+                            <input
+                                type="text"
+                                value={draftLabel}
+                                onChange={(event) => setDraftLabel(event.target.value)}
+                                placeholder="Дом, работа"
+                            />
+                        </label>
+
+                        <label className="form-field">
+                            <span>Адрес</span>
+                            <textarea
+                                value={draftValue}
+                                onChange={(event) => setDraftValue(event.target.value)}
+                                placeholder="Город, улица, дом, квартира"
+                                rows={3}
+                            />
+                        </label>
+
+                        <button className="seller-submit-btn" type="submit">
+                            {isEditing ? 'Сохранить адрес' : '+ Добавить новый адрес'}
+                        </button>
+
+                        {isEditing && (
+                            <button
+                                className="nav-link-btn nav-link-btn-secondary"
+                                type="button"
+                                onClick={startAddAddress}
+                            >
+                                Отмена
+                            </button>
+                        )}
+                    </form>
+                </section>
+            )}
+        </main>
+    );
+}
+
+function BuyerPageHeader({
+    title,
+    userLine,
+    onNavigate,
+    backToProfile = false,
+}: PageProps & {
+    title: string;
+    userLine: string;
+    backToProfile?: boolean;
+}) {
+    return (
+        <header className="page-header buyer-header">
+            <div>
+                <h1>{title}</h1>
+                {userLine && <p>{userLine}</p>}
+            </div>
+
+            <div className="page-actions">
+                {backToProfile && (
+                    <button
+                        className="nav-link-btn nav-link-btn-secondary"
+                        type="button"
+                        onClick={() => onNavigate('/profile')}
+                    >
+                        <UserBustIcon />
+                        В профиль
+                    </button>
+                )}
 
                 <button
                     className="nav-link-btn nav-link-btn-secondary"
                     type="button"
                     onClick={() => onNavigate('/')}
                 >
-                    В магазин
+                    <HomeIcon />
+                    На главную
                 </button>
-            </header>
+            </div>
+        </header>
+    );
+}
 
-            <section className="seller-auth">
-                <div className="seller-card seller-auth-card">
-                    {isLoading ? (
-                        <h2>Загружаем профиль</h2>
-                    ) : !user ? (
-                        <>
-                            <h2>Нужно войти</h2>
-                            <p className="seller-auth-hint">
-                                Войдите или зарегистрируйтесь, чтобы хранить данные
-                                профиля.
-                            </p>
+function BuyerMenuButton({
+    title,
+    description,
+    icon,
+    onClick,
+}: {
+    title: string;
+    description: string;
+    icon: ReactNode;
+    onClick: () => void;
+}) {
+    return (
+        <button className="buyer-menu-item" type="button" onClick={onClick}>
+            <span className="buyer-menu-icon">{icon}</span>
+            <span>
+                <strong>{title}</strong>
+                <small>{description}</small>
+            </span>
+        </button>
+    );
+}
 
-                            <div className="auth-actions">
-                                <button
-                                    className="seller-submit-btn"
-                                    type="button"
-                                    onClick={() => onNavigate('/login')}
-                                >
-                                    Войти
-                                </button>
+function BuyerCenteredPanel({ title }: { title: string }) {
+    return (
+        <section className="seller-auth">
+            <div className="seller-card seller-auth-card">
+                <h2>{title}</h2>
+            </div>
+        </section>
+    );
+}
 
-                                <button
-                                    className="nav-link-btn nav-link-btn-secondary"
-                                    type="button"
-                                    onClick={() => onNavigate('/register')}
-                                >
-                                    Зарегистрироваться
-                                </button>
-                            </div>
-                        </>
-                    ) : (
-                        <>
-                            <h2>Мои данные</h2>
+function BuyerAuthPrompt({ onNavigate }: PageProps) {
+    return (
+        <section className="seller-auth">
+            <div className="seller-card seller-auth-card">
+                <h2>Нужно войти</h2>
+                <p className="seller-auth-hint">
+                    Войдите или зарегистрируйтесь, чтобы открыть личные данные.
+                </p>
 
-                            <form className="seller-form" onSubmit={handleSubmit}>
-                                <label className="form-field">
-                                    <span>Имя</span>
-                                    <input
-                                        type="text"
-                                        value={fullName}
-                                        onChange={(event) =>
-                                            setFullName(event.target.value)
-                                        }
-                                        placeholder="Иван Петров"
-                                    />
-                                </label>
+                <div className="auth-actions">
+                    <button
+                        className="seller-submit-btn"
+                        type="button"
+                        onClick={() => onNavigate('/login')}
+                    >
+                        Войти
+                    </button>
 
-                                <label className="form-field">
-                                    <span>Телефон</span>
-                                    <input
-                                        type="tel"
-                                        value={phone}
-                                        onChange={(event) =>
-                                            setPhone(event.target.value)
-                                        }
-                                        placeholder="+7 999 123-45-67"
-                                    />
-                                </label>
-
-                                <label className="form-field">
-                                    <span>Адрес доставки</span>
-                                    <input
-                                        type="text"
-                                        value={address}
-                                        onChange={(event) =>
-                                            setAddress(event.target.value)
-                                        }
-                                        placeholder="Город, улица, дом, квартира"
-                                    />
-                                </label>
-
-                                {error && <div className="form-error">{error}</div>}
-
-                                {successMessage && (
-                                    <div className="form-success">
-                                        {successMessage}
-                                    </div>
-                                )}
-
-                                <button
-                                    className="seller-submit-btn"
-                                    type="submit"
-                                    disabled={isSubmitting}
-                                >
-                                    {isSubmitting ? 'Сохраняем...' : 'Сохранить'}
-                                </button>
-                            </form>
-                        </>
-                    )}
+                    <button
+                        className="nav-link-btn nav-link-btn-secondary"
+                        type="button"
+                        onClick={() => onNavigate('/register')}
+                    >
+                        Зарегистрироваться
+                    </button>
                 </div>
-            </section>
-        </main>
+            </div>
+        </section>
+    );
+}
+
+function createProfileAddress(value: string): BuyerAddress {
+    return {
+        id: 'profile-address',
+        label: 'Основной адрес',
+        value,
+        isSelected: true,
+    };
+}
+
+function formatBuyerLine(name: string, phone: string): string {
+    return [shortenFullName(name), phone || 'телефон не указан'].join(' · ');
+}
+
+function shortenFullName(value: string): string {
+    const parts = value.trim().split(/\s+/).filter(Boolean);
+
+    if (parts.length <= 2) {
+        return value;
+    }
+
+    return `${parts[0]} ${parts[1][0]}.`;
+}
+
+function formatPrice(value: number): string {
+    return `${value.toFixed(2).replace('.', ',')} ₽`;
+}
+
+function ClipboardIcon() {
+    return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M8 4h8v3H8z" />
+            <path d="M7 5H5v16h14V5h-2" />
+            <path d="M8 11h8M8 15h6" />
+        </svg>
+    );
+}
+
+function UserBustIcon() {
+    return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" />
+            <path d="M4 21a8 8 0 0 1 16 0" />
+        </svg>
+    );
+}
+
+function HomeIcon() {
+    return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 11 12 4l9 7" />
+            <path d="M6 10v11h12V10" />
+        </svg>
+    );
+}
+
+function CartIcon() {
+    return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 5h2l2 11h10l2-8H7" />
+            <path d="M10 20h.01M17 20h.01" />
+        </svg>
+    );
+}
+
+function PinIcon() {
+    return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 21s7-6.1 7-12a7 7 0 0 0-14 0c0 5.9 7 12 7 12z" />
+            <path d="M12 11a2 2 0 1 0 0-4 2 2 0 0 0 0 4z" />
+        </svg>
+    );
+}
+
+function PencilIcon() {
+    return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m4 20 4.5-1 10-10-3.5-3.5-10 10L4 20z" />
+            <path d="m14 6 3.5 3.5" />
+        </svg>
     );
 }
 

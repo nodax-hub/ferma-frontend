@@ -127,13 +127,13 @@ function OrderStatusBadge({ status }: { status: OrderStatus }) {
 function getOrderStatusLabel(status: OrderStatus): string {
     switch (status) {
         case 'created':
-            return 'Создан';
+            return 'Активный';
 
         case 'processing':
-            return 'В обработке';
+            return 'Активный';
 
         case 'completed':
-            return 'Выполнен';
+            return 'Завершён';
 
         case 'cancelled':
             return 'Отменён';
