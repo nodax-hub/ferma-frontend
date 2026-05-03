@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import {
     createContext,
     useContext,
@@ -19,9 +20,12 @@ const CART_STORAGE_KEY = 'cart';
 
 type CartContextValue = {
     state: CartState;
-    addProduct: (product: Product) => void;
+    addProduct: (product: Product, maxQuantity: number) => void;
     removeProduct: (productId: Product['id']) => void;
-    increaseQuantity: (productId: Product['id']) => void;
+    increaseQuantity: (
+        productId: Product['id'],
+        maxQuantity: number,
+    ) => void;
     decreaseQuantity: (productId: Product['id']) => void;
     clearCart: () => void;
     getProductQuantity: (productId: Product['id']) => number;
@@ -72,10 +76,13 @@ export function CartProvider({ children }: CartProviderProps) {
     const value: CartContextValue = {
         state,
 
-        addProduct: (product) => {
+        addProduct: (product, maxQuantity) => {
             dispatch({
                 type: 'ADD_PRODUCT',
-                payload: product,
+                payload: {
+                    product,
+                    maxQuantity,
+                },
             });
         },
 
@@ -86,10 +93,13 @@ export function CartProvider({ children }: CartProviderProps) {
             });
         },
 
-        increaseQuantity: (productId) => {
+        increaseQuantity: (productId, maxQuantity) => {
             dispatch({
                 type: 'INCREASE_QUANTITY',
-                payload: productId,
+                payload: {
+                    productId,
+                    maxQuantity,
+                },
             });
         },
 

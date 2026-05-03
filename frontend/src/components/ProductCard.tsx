@@ -1,5 +1,6 @@
 import type { Product } from '../models/Product';
 import { useCart } from '../store/cart/CartContext';
+import { useProductBatches } from '../store/productBatches/ProductBatchesContext';
 
 type ProductCardProps = {
     product: Product;
@@ -12,8 +13,12 @@ export function ProductCard({ product }: ProductCardProps) {
         decreaseQuantity,
         getProductQuantity,
     } = useCart();
+    const { getProductQuantity: getAvailableProductQuantity } =
+        useProductBatches();
 
     const quantity = getProductQuantity(product.id);
+    const availableQuantity = getAvailableProductQuantity(product.id);
+    const canIncreaseQuantity = quantity < availableQuantity;
     const discount = calculateDiscount(product.price, product.oldPrice);
     const meta = formatProductMeta(product);
 
@@ -46,12 +51,15 @@ export function ProductCard({ product }: ProductCardProps) {
                     )}
                 </div>
 
+                <div className="stock-info">В наличии: {availableQuantity} шт.</div>
+
                 <div className="button-wrapper">
                     {quantity === 0 ? (
                         <button
                             className="add-btn"
                             type="button"
-                            onClick={() => addProduct(product)}
+                            disabled={availableQuantity <= 0}
+                            onClick={() => addProduct(product, availableQuantity)}
                         >
                             +
                         </button>
@@ -68,7 +76,10 @@ export function ProductCard({ product }: ProductCardProps) {
 
                             <button
                                 type="button"
-                                onClick={() => increaseQuantity(product.id)}
+                                disabled={!canIncreaseQuantity}
+                                onClick={() =>
+                                    increaseQuantity(product.id, availableQuantity)
+                                }
                             >
                                 +
                             </button>

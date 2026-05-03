@@ -8,7 +8,10 @@ export type CartState = {
 export type CartAction =
     | {
     type: 'ADD_PRODUCT';
-    payload: Product;
+    payload: {
+        product: Product;
+        maxQuantity: number;
+    };
 }
     | {
     type: 'REMOVE_PRODUCT';
@@ -16,7 +19,10 @@ export type CartAction =
 }
     | {
     type: 'INCREASE_QUANTITY';
-    payload: Product['id'];
+    payload: {
+        productId: Product['id'];
+        maxQuantity: number;
+    };
 }
     | {
     type: 'DECREASE_QUANTITY';
@@ -37,15 +43,25 @@ export function cartReducer(
     switch (action.type) {
         case 'ADD_PRODUCT': {
             const existingItem = state.items.find(
-                (item) => item.product.id === action.payload.id,
+                (item) => item.product.id === action.payload.product.id,
             );
+
+            if (action.payload.maxQuantity <= 0) {
+                return state;
+            }
 
             if (existingItem) {
                 return {
                     ...state,
                     items: state.items.map((item) =>
-                        item.product.id === action.payload.id
-                            ? { ...item, quantity: item.quantity + 1 }
+                        item.product.id === action.payload.product.id
+                            ? {
+                                ...item,
+                                quantity: Math.min(
+                                    item.quantity + 1,
+                                    action.payload.maxQuantity,
+                                ),
+                            }
                             : item,
                     ),
                 };
@@ -56,7 +72,7 @@ export function cartReducer(
                 items: [
                     ...state.items,
                     {
-                        product: action.payload,
+                        product: action.payload.product,
                         quantity: 1,
                     },
                 ],
@@ -76,8 +92,14 @@ export function cartReducer(
             return {
                 ...state,
                 items: state.items.map((item) =>
-                    item.product.id === action.payload
-                        ? { ...item, quantity: item.quantity + 1 }
+                    item.product.id === action.payload.productId
+                        ? {
+                            ...item,
+                            quantity: Math.min(
+                                item.quantity + 1,
+                                action.payload.maxQuantity,
+                            ),
+                        }
                         : item,
                 ),
             };

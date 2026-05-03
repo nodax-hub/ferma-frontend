@@ -1,4 +1,5 @@
 import { useCart } from '../store/cart/CartContext';
+import { useProductBatches } from '../store/productBatches/ProductBatchesContext';
 
 type CartProps = {
     onCheckout?: () => void;
@@ -15,6 +16,8 @@ export function Cart({ onCheckout, hideCheckoutButton = false }: CartProps) {
         removeProduct,
         clearCart,
     } = useCart();
+    const { getProductQuantity: getAvailableProductQuantity } =
+        useProductBatches();
 
     const isEmpty = state.items.length === 0;
 
@@ -33,12 +36,22 @@ export function Cart({ onCheckout, hideCheckoutButton = false }: CartProps) {
             ) : (
                 <>
                     <div className="cart-items">
-                        {state.items.map((item) => (
+                        {state.items.map((item) => {
+                            const availableQuantity = getAvailableProductQuantity(
+                                item.product.id,
+                            );
+                            const canIncreaseQuantity =
+                                item.quantity < availableQuantity;
+
+                            return (
                             <div className="cart-item" key={item.product.id}>
                                 <div className="cart-item-info">
                                     <div className="cart-item-name">{item.product.name}</div>
                                     <div className="cart-item-price">
                                         {formatPrice(item.product.price)}
+                                    </div>
+                                    <div className="cart-item-stock">
+                                        В наличии: {availableQuantity} шт.
                                     </div>
                                 </div>
 
@@ -54,7 +67,13 @@ export function Cart({ onCheckout, hideCheckoutButton = false }: CartProps) {
 
                                     <button
                                         type="button"
-                                        onClick={() => increaseQuantity(item.product.id)}
+                                        disabled={!canIncreaseQuantity}
+                                        onClick={() =>
+                                            increaseQuantity(
+                                                item.product.id,
+                                                availableQuantity,
+                                            )
+                                        }
                                     >
                                         +
                                     </button>
@@ -68,7 +87,8 @@ export function Cart({ onCheckout, hideCheckoutButton = false }: CartProps) {
                                     Удалить
                                 </button>
                             </div>
-                        ))}
+                            );
+                        })}
                     </div>
 
                     <div className="cart-footer">

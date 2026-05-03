@@ -229,6 +229,16 @@
   text-overflow: ellipsis;
 }
 
+.stock-info {
+  height: 16px;
+  color: #777;
+  font-size: 12px;
+  line-height: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .button-wrapper {
   height: 36px;
   margin-top: 8px;
@@ -337,6 +347,12 @@
   color: #777;
 }
 
+.cart-item-stock {
+  margin-top: 3px;
+  font-size: 12px;
+  color: #777;
+}
+
 .cart-item-controls {
   display: flex;
   align-items: center;
@@ -353,6 +369,12 @@
   color: #fff;
   font-size: 16px;
   cursor: pointer;
+}
+
+.cart-item-controls button:disabled,
+.add-btn:disabled {
+  background: #bdbdbd;
+  cursor: not-allowed;
 }
 
 .cart-item-controls span {

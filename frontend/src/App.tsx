@@ -1266,6 +1266,8 @@ function BuyerCartPage({ onNavigate }: PageProps) {
         decreaseQuantity,
         removeProduct,
     } = useCart();
+    const { getProductQuantity: getAvailableProductQuantity } =
+        useProductBatches();
 
     const isEmpty = state.items.length === 0;
 
@@ -1286,54 +1288,16 @@ function BuyerCartPage({ onNavigate }: PageProps) {
                         <>
                             <div className="buyer-cart-list">
                                 {state.items.map((item) => (
-                                    <article
-                                        className="buyer-cart-item"
-                                        key={item.product.id}
-                                    >
-                                        {item.product.imageUrl && (
-                                            <img
-                                                src={item.product.imageUrl}
-                                                alt={item.product.name}
-                                            />
+                                    <BuyerCartPageItem
+                                        item={item}
+                                        availableQuantity={getAvailableProductQuantity(
+                                            item.product.id,
                                         )}
-
-                                        <div className="buyer-cart-item-main">
-                                            <h3>{item.product.name}</h3>
-                                            <p>{formatPrice(item.product.price)}</p>
-                                        </div>
-
-                                        <div className="cart-item-controls">
-                                            <button
-                                                type="button"
-                                                onClick={() =>
-                                                    decreaseQuantity(item.product.id)
-                                                }
-                                            >
-                                                -
-                                            </button>
-
-                                            <span>{item.quantity}</span>
-
-                                            <button
-                                                type="button"
-                                                onClick={() =>
-                                                    increaseQuantity(item.product.id)
-                                                }
-                                            >
-                                                +
-                                            </button>
-                                        </div>
-
-                                        <button
-                                            className="cart-remove-btn"
-                                            type="button"
-                                            onClick={() =>
-                                                removeProduct(item.product.id)
-                                            }
-                                        >
-                                            Удалить
-                                        </button>
-                                    </article>
+                                        decreaseQuantity={decreaseQuantity}
+                                        increaseQuantity={increaseQuantity}
+                                        removeProduct={removeProduct}
+                                        key={item.product.id}
+                                    />
                                 ))}
                             </div>
 
@@ -1356,6 +1320,65 @@ function BuyerCartPage({ onNavigate }: PageProps) {
                 </div>
             </section>
         </main>
+    );
+}
+
+function BuyerCartPageItem({
+    item,
+    availableQuantity,
+    decreaseQuantity,
+    increaseQuantity,
+    removeProduct,
+}: {
+    item: ReturnType<typeof useCart>['state']['items'][number];
+    availableQuantity: number;
+    decreaseQuantity: (productId: Product['id']) => void;
+    increaseQuantity: (productId: Product['id'], maxQuantity: number) => void;
+    removeProduct: (productId: Product['id']) => void;
+}) {
+    const canIncreaseQuantity = item.quantity < availableQuantity;
+
+    return (
+        <article className="buyer-cart-item">
+            {item.product.imageUrl && (
+                <img src={item.product.imageUrl} alt={item.product.name} />
+            )}
+
+            <div className="buyer-cart-item-main">
+                <h3>{item.product.name}</h3>
+                <p>{formatPrice(item.product.price)}</p>
+                <p>В наличии: {availableQuantity} шт.</p>
+            </div>
+
+            <div className="cart-item-controls">
+                <button
+                    type="button"
+                    onClick={() => decreaseQuantity(item.product.id)}
+                >
+                    -
+                </button>
+
+                <span>{item.quantity}</span>
+
+                <button
+                    type="button"
+                    disabled={!canIncreaseQuantity}
+                    onClick={() =>
+                        increaseQuantity(item.product.id, availableQuantity)
+                    }
+                >
+                    +
+                </button>
+            </div>
+
+            <button
+                className="cart-remove-btn"
+                type="button"
+                onClick={() => removeProduct(item.product.id)}
+            >
+                Удалить
+            </button>
+        </article>
     );
 }
 
