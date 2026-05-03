@@ -1,4 +1,3 @@
-import { initialProductBatches } from '../../data/productBatches';
 import type { ProductBatch } from '../../models/ProductBatch';
 import type { Product } from '../../models/Product';
 
@@ -7,6 +6,10 @@ export type ProductBatchesState = {
 };
 
 export type ProductBatchesAction =
+    | {
+    type: 'SET_BATCHES';
+    payload: ProductBatch[];
+}
     | {
     type: 'CREATE_BATCH';
     payload: ProductBatch;
@@ -27,7 +30,7 @@ export type ProductBatchesAction =
 };
 
 export const initialProductBatchesState: ProductBatchesState = {
-    batches: initialProductBatches,
+    batches: [],
 };
 
 export function productBatchesReducer(
@@ -35,6 +38,13 @@ export function productBatchesReducer(
     action: ProductBatchesAction,
 ): ProductBatchesState {
     switch (action.type) {
+        case 'SET_BATCHES': {
+            return {
+                ...state,
+                batches: action.payload,
+            };
+        }
+
         case 'CREATE_BATCH': {
             return {
                 ...state,

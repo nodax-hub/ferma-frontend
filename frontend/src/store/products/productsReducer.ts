@@ -1,11 +1,14 @@
 import type { Product, ProductStatus } from '../../models/Product';
-import { initialProducts } from '../../data/products';
 
 export type ProductsState = {
     products: Product[];
 };
 
 export type ProductsAction =
+    | {
+    type: 'SET_PRODUCTS';
+    payload: Product[];
+}
     | {
     type: 'CREATE_PRODUCT';
     payload: Product;
@@ -30,7 +33,7 @@ export type ProductsAction =
 };
 
 export const initialProductsState: ProductsState = {
-    products: initialProducts,
+    products: [],
 };
 
 export function productsReducer(
@@ -38,6 +41,13 @@ export function productsReducer(
     action: ProductsAction,
 ): ProductsState {
     switch (action.type) {
+        case 'SET_PRODUCTS': {
+            return {
+                ...state,
+                products: action.payload,
+            };
+        }
+
         case 'CREATE_PRODUCT': {
             return {
                 ...state,

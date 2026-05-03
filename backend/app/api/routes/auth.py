@@ -76,6 +76,17 @@ def get_me(current_user: User = Depends(get_current_user)) -> User:
     return current_user
 
 
+@router.get("/users", response_model=list[UserRead])
+def list_users(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[User]:
+    if current_user.role != UserRole.ADMIN.value:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+
+    return db.scalars(select(User).order_by(User.created_at.desc())).all()
+
+
 @router.patch("/me", response_model=UserRead)
 def update_me(
     payload: UserUpdate,

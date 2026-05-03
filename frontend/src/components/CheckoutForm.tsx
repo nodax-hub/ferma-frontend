@@ -27,6 +27,7 @@ export function CheckoutForm({ onNavigate }: CheckoutFormProps) {
 
     const [error, setError] = useState<string>('');
     const [successMessage, setSuccessMessage] = useState<string>('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const {
         state: cartState,
@@ -36,7 +37,7 @@ export function CheckoutForm({ onNavigate }: CheckoutFormProps) {
     } = useCart();
 
     const { createOrder } = useOrders();
-    const { decreaseProductQuantity, getProductQuantity } = useProductBatches();
+    const { getProductQuantity, reloadBatches } = useProductBatches();
     const { user } = useAuth();
     const selectedAddress = getSelectedBuyerAddress();
     const savedAddresses = loadBuyerAddresses();
@@ -80,7 +81,7 @@ export function CheckoutForm({ onNavigate }: CheckoutFormProps) {
 
     const isCartEmpty = cartState.items.length === 0;
 
-    const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
 
         setError('');
@@ -133,13 +134,23 @@ export function CheckoutForm({ onNavigate }: CheckoutFormProps) {
             status: 'created',
         };
 
-        createOrder(newOrder);
-        cartState.items.forEach((item) => {
-            decreaseProductQuantity(item.product.id, item.quantity);
-        });
-        clearCart();
-        setCustomerInfo(initialCustomerInfo);
-        setSuccessMessage('Заказ оформлен');
+        setIsSubmitting(true);
+
+        try {
+            await createOrder(newOrder);
+            await reloadBatches();
+            clearCart();
+            setCustomerInfo(initialCustomerInfo);
+            setSuccessMessage('Заказ оформлен');
+        } catch (caughtError) {
+            setError(
+                caughtError instanceof Error
+                    ? caughtError.message
+                    : 'Не удалось оформить заказ',
+            );
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
@@ -294,9 +305,9 @@ export function CheckoutForm({ onNavigate }: CheckoutFormProps) {
                 <button
                     className="checkout-submit-btn"
                     type="submit"
-                    disabled={isCartEmpty}
+                    disabled={isCartEmpty || isSubmitting}
                 >
-                    Оформить заказ
+                    {isSubmitting ? 'Оформляем...' : 'Оформить заказ'}
                 </button>
             </form>
         </section>

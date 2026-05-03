@@ -681,8 +681,9 @@ function SellerOrdersPage({
 }) {
     const { state: ordersState } = useOrders();
     const { state: productsState } = useProducts();
+    const sellerId = String(user.id);
     const sellerProducts = productsState.products.filter(
-        (product) => product.sellerId === 'demo-seller',
+        (product) => product.sellerId === sellerId,
     );
     const sellerProductIds = new Set(sellerProducts.map((product) => product.id));
     const matchingOrders = ordersState.orders.filter((order) => {
@@ -774,8 +775,9 @@ function SellerBatchesPage({
         deleteBatch,
         getProductQuantity,
     } = useProductBatches();
+    const sellerId = String(user.id);
     const sellerProducts = productsState.products.filter(
-        (product) => product.sellerId === 'demo-seller',
+        (product) => product.sellerId === sellerId,
     );
     const [productId, setProductId] = useState(sellerProducts[0]?.id ?? '');
     const [manufacturedAt, setManufacturedAt] = useState('');
@@ -783,17 +785,18 @@ function SellerBatchesPage({
     const [error, setError] = useState('');
 
     const sellerBatches = batchesState.batches.filter(
-        (batch) => batch.sellerId === 'demo-seller',
+        (batch) => batch.sellerId === sellerId,
     );
+    const selectedProductId = productId || sellerProducts[0]?.id || '';
 
-    const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
 
         const parsedQuantity = Number(quantity);
 
         setError('');
 
-        if (!productId) {
+        if (!selectedProductId) {
             setError('Выберите товар');
             return;
         }
@@ -810,19 +813,27 @@ function SellerBatchesPage({
 
         const now = new Date().toISOString();
 
-        createBatch({
-            id: crypto.randomUUID(),
-            productId,
-            sellerId: 'demo-seller',
-            manufacturedAt,
-            quantity: parsedQuantity,
-            initialQuantity: parsedQuantity,
-            createdAt: now,
-            updatedAt: now,
-        });
+        try {
+            await createBatch({
+                id: crypto.randomUUID(),
+                productId: selectedProductId,
+                sellerId,
+                manufacturedAt,
+                quantity: parsedQuantity,
+                initialQuantity: parsedQuantity,
+                createdAt: now,
+                updatedAt: now,
+            });
 
-        setManufacturedAt('');
-        setQuantity('');
+            setManufacturedAt('');
+            setQuantity('');
+        } catch (caughtError) {
+            setError(
+                caughtError instanceof Error
+                    ? caughtError.message
+                    : 'Не удалось добавить партию',
+            );
+        }
     };
 
     return (
@@ -853,7 +864,7 @@ function SellerBatchesPage({
                     <label className="form-field">
                         <span>Товар</span>
                         <select
-                            value={productId}
+                            value={selectedProductId}
                             onChange={(event) => setProductId(event.target.value)}
                         >
                             {sellerProducts.map((product) => (
@@ -934,7 +945,7 @@ function SellerBatchesPage({
                                         <button
                                             className="seller-danger-btn"
                                             type="button"
-                                            onClick={() => deleteBatch(batch.id)}
+                                            onClick={() => void deleteBatch(batch.id)}
                                         >
                                             Удалить
                                         </button>
@@ -954,8 +965,9 @@ function SellerChecksPage({
     onNavigate,
 }: PageProps & { user: AuthUser }) {
     const { state } = useProducts();
+    const sellerId = String(user.id);
     const sellerProducts = state.products.filter(
-        (product) => product.sellerId === 'demo-seller',
+        (product) => product.sellerId === sellerId,
     );
 
     return (

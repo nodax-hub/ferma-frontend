@@ -2,19 +2,20 @@ import { useProducts } from '../store/products/ProductsContext';
 import { useProductBatches } from '../store/productBatches/ProductBatchesContext';
 import type { Product } from '../models/Product';
 import { formatDate } from '../utils/dateFormat';
-
-const CURRENT_SELLER_ID = 'demo-seller';
+import { useAuth } from '../store/auth/AuthContext';
 
 type SellerProductsListProps = {
     onEditProduct: (product: Product) => void;
 };
 
 export function SellerProductsList({ onEditProduct }: SellerProductsListProps) {
-    const { state, deleteProduct, clearProducts } = useProducts();
+    const { user } = useAuth();
+    const { state, deleteProduct } = useProducts();
     const { getProductQuantity } = useProductBatches();
+    const sellerId = user ? String(user.id) : '';
 
     const sellerProducts = state.products.filter(
-        (product) => product.sellerId === CURRENT_SELLER_ID,
+        (product) => product.sellerId === sellerId,
     );
 
     const hasProducts = sellerProducts.length > 0;
@@ -24,13 +25,6 @@ export function SellerProductsList({ onEditProduct }: SellerProductsListProps) {
             <div className="seller-products-header">
                 <h2>Мои товары</h2>
 
-                <button
-                    className="seller-danger-btn"
-                    type="button"
-                    onClick={clearProducts}
-                >
-                    Сбросить товары
-                </button>
             </div>
 
             {!hasProducts ? (
@@ -75,7 +69,7 @@ export function SellerProductsList({ onEditProduct }: SellerProductsListProps) {
                                 <button
                                     className="seller-danger-btn"
                                     type="button"
-                                    onClick={() => deleteProduct(product.id)}
+                                    onClick={() => void deleteProduct(product.id)}
                                 >
                                     Удалить
                                 </button>

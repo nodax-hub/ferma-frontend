@@ -2,21 +2,17 @@
 import {
     createContext,
     useContext,
-    useEffect,
     useMemo,
     useReducer,
     type ReactNode,
 } from 'react';
 
 import type { Product } from '../../models/Product';
-import { StorageService } from '../../utils/storage';
 import {
     cartReducer,
     initialCartState,
     type CartState,
 } from './cartReducer';
-
-const CART_STORAGE_KEY = 'cart';
 
 type CartContextValue = {
     state: CartState;
@@ -43,15 +39,7 @@ export function CartProvider({ children }: CartProviderProps) {
     const [state, dispatch] = useReducer(
         cartReducer,
         initialCartState,
-        () => StorageService.getItem<CartState>(
-            CART_STORAGE_KEY,
-            initialCartState,
-        ),
     );
-
-    useEffect(() => {
-        StorageService.setItem(CART_STORAGE_KEY, state);
-    }, [state]);
 
     const totalPrice = useMemo(() => {
         return state.items.reduce((sum, item) => {

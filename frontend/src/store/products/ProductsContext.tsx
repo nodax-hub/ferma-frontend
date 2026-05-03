@@ -6,26 +6,31 @@ import {
     type ReactNode,
 } from 'react';
 
+import {
+    createProductRequest,
+    deleteProductRequest,
+    fetchProducts,
+    updateProductRequest,
+    updateProductStatusRequest,
+} from '../../api/client';
 import type { Product, ProductStatus } from '../../models/Product';
-import { StorageService } from '../../utils/storage';
+import { useAuth } from '../auth/AuthContext';
 import {
     initialProductsState,
     productsReducer,
     type ProductsState,
 } from './productsReducer';
 
-const PRODUCTS_STORAGE_KEY = 'products';
-
 type ProductsContextValue = {
     state: ProductsState;
-    createProduct: (product: Product) => void;
-    updateProduct: (product: Product) => void;
-    deleteProduct: (productId: Product['id']) => void;
+    createProduct: (product: Product) => Promise<Product>;
+    updateProduct: (product: Product) => Promise<Product>;
+    deleteProduct: (productId: Product['id']) => Promise<void>;
     updateProductStatus: (
         productId: Product['id'],
         status: ProductStatus,
-    ) => void;
-    clearProducts: () => void;
+    ) => Promise<Product>;
+    reloadProducts: () => Promise<void>;
 };
 
 const ProductsContext = createContext<ProductsContextValue | null>(null);
@@ -35,59 +40,95 @@ type ProductsProviderProps = {
 };
 
 export function ProductsProvider({ children }: ProductsProviderProps) {
+    const { token } = useAuth();
     const [state, dispatch] = useReducer(
         productsReducer,
         initialProductsState,
-        () =>
-            StorageService.getItem<ProductsState>(
-                PRODUCTS_STORAGE_KEY,
-                initialProductsState,
-            ),
     );
 
+    const reloadProducts = async () => {
+        const products = await fetchProducts();
+
+        dispatch({
+            type: 'SET_PRODUCTS',
+            payload: products,
+        });
+    };
+
     useEffect(() => {
-        StorageService.setItem(PRODUCTS_STORAGE_KEY, state);
-    }, [state]);
+        void reloadProducts();
+    }, []);
 
     const value: ProductsContextValue = {
         state,
 
-        createProduct: (product) => {
+        createProduct: async (product) => {
+            if (!token) {
+                throw new Error('Нужно войти в аккаунт продавца');
+            }
+
+            const createdProduct = await createProductRequest(token, product);
+
             dispatch({
                 type: 'CREATE_PRODUCT',
-                payload: product,
+                payload: createdProduct,
             });
+
+            return createdProduct;
         },
 
-        updateProduct: (product) => {
+        updateProduct: async (product) => {
+            if (!token) {
+                throw new Error('Нужно войти в аккаунт продавца');
+            }
+
+            const updatedProduct = await updateProductRequest(
+                token,
+                product.id,
+                product,
+            );
+
             dispatch({
                 type: 'UPDATE_PRODUCT',
-                payload: product,
+                payload: updatedProduct,
             });
+
+            return updatedProduct;
         },
 
-        deleteProduct: (productId) => {
+        deleteProduct: async (productId) => {
+            if (!token) {
+                throw new Error('Нужно войти в аккаунт продавца');
+            }
+
+            await deleteProductRequest(token, productId);
+
             dispatch({
                 type: 'DELETE_PRODUCT',
                 payload: productId,
             });
         },
 
-        updateProductStatus: (productId, status) => {
+        updateProductStatus: async (productId, status) => {
+            if (!token) {
+                throw new Error('Нужно войти в аккаунт администратора');
+            }
+
+            const updatedProduct = await updateProductStatusRequest(
+                token,
+                productId,
+                status,
+            );
+
             dispatch({
-                type: 'UPDATE_PRODUCT_STATUS',
-                payload: {
-                    productId,
-                    status,
-                },
+                type: 'UPDATE_PRODUCT',
+                payload: updatedProduct,
             });
+
+            return updatedProduct;
         },
 
-        clearProducts: () => {
-            dispatch({
-                type: 'CLEAR_PRODUCTS',
-            });
-        },
+        reloadProducts,
     };
 
     return (

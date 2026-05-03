@@ -29,7 +29,7 @@ export function OrdersList() {
                     <button
                         className="orders-clear-btn"
                         type="button"
-                        onClick={clearOrders}
+                        onClick={() => void clearOrders()}
                     >
                         Очистить историю
                     </button>
@@ -85,7 +85,7 @@ export function OrdersList() {
                                     {order.status !== 'cancelled' && (
                                         <button
                                             type="button"
-                                            onClick={() => cancelOrder(order.id)}
+                                            onClick={() => void cancelOrder(order.id)}
                                         >
                                             Отменить заказ
                                         </button>

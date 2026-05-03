@@ -6,21 +6,25 @@ import {
     type ReactNode,
 } from 'react';
 
+import {
+    cancelOrderRequest,
+    clearOrdersRequest,
+    createOrderRequest,
+    fetchOrders,
+} from '../../api/client';
 import type { Order } from '../../models/Order';
-import { StorageService } from '../../utils/storage';
 import {
     initialOrdersState,
     ordersReducer,
     type OrdersState,
 } from './ordersReducer';
 
-const ORDERS_STORAGE_KEY = 'orders';
-
 type OrdersContextValue = {
     state: OrdersState;
-    createOrder: (order: Order) => void;
-    cancelOrder: (orderId: Order['id']) => void;
-    clearOrders: () => void;
+    createOrder: (order: Order) => Promise<Order>;
+    cancelOrder: (orderId: Order['id']) => Promise<Order>;
+    clearOrders: () => Promise<void>;
+    reloadOrders: () => Promise<void>;
 };
 
 const OrdersContext = createContext<OrdersContextValue | null>(null);
@@ -33,38 +37,55 @@ export function OrdersProvider({ children }: OrdersProviderProps) {
     const [state, dispatch] = useReducer(
         ordersReducer,
         initialOrdersState,
-        () => StorageService.getItem<OrdersState>(
-            ORDERS_STORAGE_KEY,
-            initialOrdersState,
-        ),
     );
 
+    const reloadOrders = async () => {
+        const orders = await fetchOrders();
+
+        dispatch({
+            type: 'SET_ORDERS',
+            payload: orders,
+        });
+    };
+
     useEffect(() => {
-        StorageService.setItem(ORDERS_STORAGE_KEY, state);
-    }, [state]);
+        void reloadOrders();
+    }, []);
 
     const value: OrdersContextValue = {
         state,
 
-        createOrder: (order) => {
+        createOrder: async (order) => {
+            const createdOrder = await createOrderRequest(order);
+
             dispatch({
                 type: 'CREATE_ORDER',
-                payload: order,
+                payload: createdOrder,
             });
+
+            return createdOrder;
         },
 
-        cancelOrder: (orderId) => {
+        cancelOrder: async (orderId) => {
+            const updatedOrder = await cancelOrderRequest(orderId);
+
             dispatch({
                 type: 'CANCEL_ORDER',
-                payload: orderId,
+                payload: updatedOrder.id,
             });
+
+            return updatedOrder;
         },
 
-        clearOrders: () => {
+        clearOrders: async () => {
+            await clearOrdersRequest();
+
             dispatch({
                 type: 'CLEAR_ORDERS',
             });
         },
+
+        reloadOrders,
     };
 
     return (

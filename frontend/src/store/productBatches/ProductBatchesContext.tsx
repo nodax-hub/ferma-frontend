@@ -7,28 +7,32 @@ import {
     type ReactNode,
 } from 'react';
 
+import {
+    createProductBatchRequest,
+    decreaseProductQuantityRequest,
+    deleteProductBatchRequest,
+    fetchProductBatches,
+} from '../../api/client';
 import type { Product } from '../../models/Product';
 import type { ProductBatch } from '../../models/ProductBatch';
-import { StorageService } from '../../utils/storage';
+import { useAuth } from '../auth/AuthContext';
 import {
     initialProductBatchesState,
     productBatchesReducer,
     type ProductBatchesState,
 } from './productBatchesReducer';
 
-const PRODUCT_BATCHES_STORAGE_KEY = 'product-batches';
-
 type ProductBatchesContextValue = {
     state: ProductBatchesState;
-    createBatch: (batch: ProductBatch) => void;
-    deleteBatch: (batchId: ProductBatch['id']) => void;
+    createBatch: (batch: ProductBatch) => Promise<ProductBatch>;
+    deleteBatch: (batchId: ProductBatch['id']) => Promise<void>;
     decreaseProductQuantity: (
         productId: Product['id'],
         quantity: number,
-    ) => void;
+    ) => Promise<void>;
     getProductQuantity: (productId: Product['id']) => number;
     getProductBatches: (productId: Product['id']) => ProductBatch[];
-    clearBatches: () => void;
+    reloadBatches: () => Promise<void>;
 };
 
 const ProductBatchesContext =
@@ -41,19 +45,24 @@ type ProductBatchesProviderProps = {
 export function ProductBatchesProvider({
     children,
 }: ProductBatchesProviderProps) {
+    const { token } = useAuth();
     const [state, dispatch] = useReducer(
         productBatchesReducer,
         initialProductBatchesState,
-        () =>
-            StorageService.getItem<ProductBatchesState>(
-                PRODUCT_BATCHES_STORAGE_KEY,
-                initialProductBatchesState,
-            ),
     );
 
+    const reloadBatches = async () => {
+        const batches = await fetchProductBatches();
+
+        dispatch({
+            type: 'SET_BATCHES',
+            payload: batches,
+        });
+    };
+
     useEffect(() => {
-        StorageService.setItem(PRODUCT_BATCHES_STORAGE_KEY, state);
-    }, [state]);
+        void reloadBatches();
+    }, []);
 
     const getProductBatches = (productId: Product['id']) =>
         state.batches.filter((batch) => batch.productId === productId);
@@ -67,38 +76,46 @@ export function ProductBatchesProvider({
     const value: ProductBatchesContextValue = {
         state,
 
-        createBatch: (batch) => {
+        createBatch: async (batch) => {
+            if (!token) {
+                throw new Error('Нужно войти в аккаунт продавца');
+            }
+
+            const createdBatch = await createProductBatchRequest(token, batch);
+
             dispatch({
                 type: 'CREATE_BATCH',
-                payload: batch,
+                payload: createdBatch,
             });
+
+            return createdBatch;
         },
 
-        deleteBatch: (batchId) => {
+        deleteBatch: async (batchId) => {
+            if (!token) {
+                throw new Error('Нужно войти в аккаунт продавца');
+            }
+
+            await deleteProductBatchRequest(token, batchId);
+
             dispatch({
                 type: 'DELETE_BATCH',
                 payload: batchId,
             });
         },
 
-        decreaseProductQuantity: (productId, quantity) => {
+        decreaseProductQuantity: async (productId, quantity) => {
+            const batches = await decreaseProductQuantityRequest(productId, quantity);
+
             dispatch({
-                type: 'DECREASE_PRODUCT_QUANTITY',
-                payload: {
-                    productId,
-                    quantity,
-                },
+                type: 'SET_BATCHES',
+                payload: batches,
             });
         },
 
         getProductQuantity,
         getProductBatches,
-
-        clearBatches: () => {
-            dispatch({
-                type: 'CLEAR_BATCHES',
-            });
-        },
+        reloadBatches,
     };
 
     return (

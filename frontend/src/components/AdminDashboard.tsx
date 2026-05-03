@@ -1,8 +1,12 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
+import { fetchUsers, type AuthUser } from '../api/client';
 import type { OrderStatus } from '../models/Order';
 import type { Product, ProductStatus } from '../models/Product';
+import type { ProductBatch } from '../models/ProductBatch';
+import { useAuth } from '../store/auth/AuthContext';
 import { useOrders } from '../store/orders/OrdersContext';
+import { useProductBatches } from '../store/productBatches/ProductBatchesContext';
 import { useProducts } from '../store/products/ProductsContext';
 import { formatDate } from '../utils/dateFormat';
 
@@ -14,12 +18,12 @@ type AdminSection =
     | 'batches'
     | 'products';
 
-type SellerStatus = 'active' | 'blocked' | 'checking';
-
 type Seller = {
     id: string;
     name: string;
-    status: SellerStatus;
+    email: string;
+    productCount: number;
+    pendingCount: number;
 };
 
 const adminSections: Array<{
@@ -52,36 +56,82 @@ const adminSections: Array<{
     },
 ];
 
-const initialSellers: Seller[] = [
-    {
-        id: 'demo-seller',
-        name: 'Демо-продавец',
-        status: 'active',
-    },
-];
-
 export function AdminDashboard() {
+    const { token } = useAuth();
     const [activeSection, setActiveSection] = useState<AdminSection>('review');
-    const [sellers, setSellers] = useState<Seller[]>(initialSellers);
+    const [users, setUsers] = useState<AuthUser[]>([]);
 
     const { state: productsState, updateProductStatus } = useProducts();
     const { state: ordersState } = useOrders();
+    const { state: batchesState } = useProductBatches();
 
-    const sellersWithProducts = useMemo(() => {
-        const sellerMap = new Map(sellers.map((seller) => [seller.id, seller]));
+    useEffect(() => {
+        if (!token) {
+            return;
+        }
+
+        let isActive = true;
+
+        fetchUsers(token)
+            .then((loadedUsers) => {
+                if (isActive) {
+                    setUsers(loadedUsers);
+                }
+            })
+            .catch(() => {
+                if (isActive) {
+                    setUsers([]);
+                }
+            });
+
+        return () => {
+            isActive = false;
+        };
+    }, [token]);
+
+    const adminUsers = useMemo(() => (token ? users : []), [token, users]);
+
+    const sellers = useMemo(() => {
+        const sellersById = new Map(
+            adminUsers
+                .filter((user) => user.role === 'seller')
+                .map((user) => [
+                    String(user.id),
+                    {
+                        id: String(user.id),
+                        name: user.full_name,
+                        email: user.email,
+                        productCount: 0,
+                        pendingCount: 0,
+                    },
+                ]),
+        );
 
         productsState.products.forEach((product) => {
-            if (!sellerMap.has(product.sellerId)) {
-                sellerMap.set(product.sellerId, {
+            const seller = sellersById.get(product.sellerId);
+
+            if (seller) {
+                seller.productCount += 1;
+
+                if (getProductStatus(product) === 'pending_review') {
+                    seller.pendingCount += 1;
+                }
+
+                return;
+            }
+
+            sellersById.set(product.sellerId, {
                     id: product.sellerId,
                     name: product.sellerId,
-                    status: 'checking',
-                });
-            }
+                    email: '',
+                    productCount: 1,
+                    pendingCount:
+                        getProductStatus(product) === 'pending_review' ? 1 : 0,
+            });
         });
 
-        return Array.from(sellerMap.values());
-    }, [productsState.products, sellers]);
+        return Array.from(sellersById.values());
+    }, [adminUsers, productsState.products]);
 
     const buyers = useMemo(() => {
         const buyerMap = new Map<
@@ -89,9 +139,21 @@ export function AdminDashboard() {
             {
                 name: string;
                 phone: string;
+                email: string;
                 orderCount: number;
             }
         >();
+
+        adminUsers
+            .filter((user) => user.role === 'buyer')
+            .forEach((user) => {
+                buyerMap.set(user.phone || user.email || String(user.id), {
+                    name: user.full_name,
+                    phone: user.phone,
+                    email: user.email,
+                    orderCount: 0,
+                });
+            });
 
         ordersState.orders.forEach((order) => {
             const key = order.customer.phone || order.customer.name;
@@ -105,38 +167,13 @@ export function AdminDashboard() {
             buyerMap.set(key, {
                 name: order.customer.name,
                 phone: order.customer.phone,
+                email: '',
                 orderCount: 1,
             });
         });
 
         return Array.from(buyerMap.values());
-    }, [ordersState.orders]);
-
-    const updateSellerStatus = (sellerId: string, status: SellerStatus) => {
-        setSellers((current) => {
-            const existingSeller = current.find((seller) => seller.id === sellerId);
-
-            if (!existingSeller) {
-                return [
-                    ...current,
-                    {
-                        id: sellerId,
-                        name: sellerId,
-                        status,
-                    },
-                ];
-            }
-
-            return current.map((seller) =>
-                seller.id === sellerId
-                    ? {
-                        ...seller,
-                        status,
-                    }
-                    : seller,
-            );
-        });
-    };
+    }, [adminUsers, ordersState.orders]);
 
     return (
         <section className="admin-dashboard">
@@ -174,10 +211,7 @@ export function AdminDashboard() {
                 )}
 
                 {activeSection === 'sellers' && (
-                    <SellersAdminList
-                        sellers={sellersWithProducts}
-                        updateSellerStatus={updateSellerStatus}
-                    />
+                    <SellersAdminList sellers={sellers} />
                 )}
 
                 {activeSection === 'buyers' && (
@@ -185,7 +219,10 @@ export function AdminDashboard() {
                 )}
 
                 {activeSection === 'batches' && (
-                    <BatchesAdminList products={productsState.products} />
+                    <BatchesAdminList
+                        batches={batchesState.batches}
+                        products={productsState.products}
+                    />
                 )}
 
                 {activeSection === 'products' && (
@@ -249,7 +286,7 @@ function ProductsAdminList({
                                 <select
                                     value={getProductStatus(product)}
                                     onChange={(event) =>
-                                        updateProductStatus(
+                                        void updateProductStatus(
                                             product.id,
                                             event.target.value as ProductStatus,
                                         )
@@ -305,40 +342,35 @@ function OrdersAdminList({ orders }: { orders: ReturnType<typeof useOrders>['sta
 
 function SellersAdminList({
     sellers,
-    updateSellerStatus,
 }: {
     sellers: Seller[];
-    updateSellerStatus: (sellerId: string, status: SellerStatus) => void;
 }) {
     return (
         <section className="admin-panel">
             <h2>Продавцы</h2>
 
-            <div className="admin-list">
-                {sellers.map((seller) => (
-                    <article className="admin-list-item" key={seller.id}>
-                        <div>
-                            <h3>{seller.name}</h3>
-                            <p>ID: {seller.id}</p>
-                            <p>Статус: {getSellerStatusLabel(seller.status)}</p>
-                        </div>
+            {sellers.length === 0 ? (
+                <p className="admin-empty">Продавцов пока нет</p>
+            ) : (
+                <div className="admin-list">
+                    {sellers.map((seller) => (
+                        <article className="admin-list-item" key={seller.id}>
+                            <div>
+                                <h3>{seller.name}</h3>
+                                <p>ID: {seller.id}</p>
+                                {seller.email && <p>{seller.email}</p>}
+                            </div>
 
-                        <select
-                            value={seller.status}
-                            onChange={(event) =>
-                                updateSellerStatus(
-                                    seller.id,
-                                    event.target.value as SellerStatus,
-                                )
-                            }
-                        >
-                            <option value="active">Активен</option>
-                            <option value="checking">На проверке</option>
-                            <option value="blocked">Заблокирован</option>
-                        </select>
-                    </article>
-                ))}
-            </div>
+                            <div className="admin-item-side">
+                                <strong>{seller.productCount} товар(ов)</strong>
+                                <span className="admin-status">
+                                    {seller.pendingCount} на проверке
+                                </span>
+                            </div>
+                        </article>
+                    ))}
+                </div>
+            )}
         </section>
     );
 }
@@ -349,6 +381,7 @@ function BuyersAdminList({
     buyers: Array<{
         name: string;
         phone: string;
+        email: string;
         orderCount: number;
     }>;
 }) {
@@ -361,10 +394,14 @@ function BuyersAdminList({
             ) : (
                 <div className="admin-list">
                     {buyers.map((buyer) => (
-                        <article className="admin-list-item" key={buyer.phone}>
+                        <article
+                            className="admin-list-item"
+                            key={buyer.phone || buyer.email || buyer.name}
+                        >
                             <div>
                                 <h3>{buyer.name}</h3>
-                                <p>{buyer.phone}</p>
+                                {buyer.phone && <p>{buyer.phone}</p>}
+                                {buyer.email && <p>{buyer.email}</p>}
                             </div>
 
                             <strong>{buyer.orderCount} заказ(ов)</strong>
@@ -376,29 +413,49 @@ function BuyersAdminList({
     );
 }
 
-function BatchesAdminList({ products }: { products: Product[] }) {
+function BatchesAdminList({
+    batches,
+    products,
+}: {
+    batches: ProductBatch[];
+    products: Product[];
+}) {
     return (
         <section className="admin-panel">
             <h2>Партии товара</h2>
 
-            {products.length === 0 ? (
+            {batches.length === 0 ? (
                 <p className="admin-empty">Партий пока нет</p>
             ) : (
                 <div className="admin-list">
-                    {products.map((product) => (
-                        <article className="admin-list-item" key={product.id}>
-                            <div>
-                                <h3>Партия {product.id.slice(0, 8)}</h3>
-                                <p>{product.name}</p>
-                                <p>Продавец: {product.sellerId}</p>
-                                <p>Создана: {formatDate(product.createdAt)}</p>
-                            </div>
+                    {batches.map((batch) => {
+                        const product = products.find(
+                            (item) => item.id === batch.productId,
+                        );
 
-                            <span className="admin-status">
-                                {getProductStatusLabel(getProductStatus(product))}
-                            </span>
-                        </article>
-                    ))}
+                        return (
+                            <article className="admin-list-item" key={batch.id}>
+                                <div>
+                                    <h3>Партия {batch.id.slice(0, 8)}</h3>
+                                    <p>{product?.name ?? 'Товар удалён'}</p>
+                                    <p>Продавец: {batch.sellerId}</p>
+                                    <p>Изготовлено: {batch.manufacturedAt}</p>
+                                    <p>
+                                        Остаток: {batch.quantity} из{' '}
+                                        {batch.initialQuantity} шт.
+                                    </p>
+                                </div>
+
+                                <span className="admin-status">
+                                    {product
+                                        ? getProductStatusLabel(
+                                            getProductStatus(product),
+                                        )
+                                        : 'Нет товара'}
+                                </span>
+                            </article>
+                        );
+                    })}
                 </div>
             )}
         </section>
@@ -438,22 +495,6 @@ function getOrderStatusLabel(status: OrderStatus): string {
 
         case 'cancelled':
             return 'Отменен';
-
-        default:
-            return status;
-    }
-}
-
-function getSellerStatusLabel(status: SellerStatus): string {
-    switch (status) {
-        case 'active':
-            return 'Активен';
-
-        case 'checking':
-            return 'На проверке';
-
-        case 'blocked':
-            return 'Заблокирован';
 
         default:
             return status;

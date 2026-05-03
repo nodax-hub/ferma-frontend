@@ -6,6 +6,10 @@ export type OrdersState = {
 
 export type OrdersAction =
     | {
+    type: 'SET_ORDERS';
+    payload: Order[];
+}
+    | {
     type: 'CREATE_ORDER';
     payload: Order;
 }
@@ -26,6 +30,13 @@ export function ordersReducer(
     action: OrdersAction,
 ): OrdersState {
     switch (action.type) {
+        case 'SET_ORDERS': {
+            return {
+                ...state,
+                orders: action.payload,
+            };
+        }
+
         case 'CREATE_ORDER': {
             return {
                 ...state,

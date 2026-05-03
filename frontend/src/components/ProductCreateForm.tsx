@@ -1,6 +1,7 @@
 import { useState, type ChangeEvent, type FormEvent } from 'react';
 
 import type { MeasurementUnit, Product, ProductTag } from '../models/Product';
+import { useAuth } from '../store/auth/AuthContext';
 import { useProducts } from '../store/products/ProductsContext';
 
 type ProductFormState = {
@@ -23,7 +24,6 @@ const initialFormState: ProductFormState = {
     expiryDays: '',
 };
 
-const CURRENT_SELLER_ID = 'demo-seller';
 const PRODUCT_TAGS: ProductTag[] = ['Без сахара', 'Халяль', 'Без лактозы', 'Белковый', 'Сливочный'];
 const MEASUREMENT_UNITS: MeasurementUnit[] = ['г', 'кг', 'мл', 'л', 'шт'];
 const DECIMAL_PATTERN = /^\d+(?:[,.]\d{1,2})?$/;
@@ -40,6 +40,7 @@ export function ProductCreateForm({
     onCancelEdit,
     onSaved,
 }: ProductCreateFormProps) {
+    const { user } = useAuth();
     const { createProduct, updateProduct } = useProducts();
     const isEditing = Boolean(productToEdit);
 
@@ -48,6 +49,7 @@ export function ProductCreateForm({
 
     const [error, setError] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [imageUrl, setImageUrl] = useState(productToEdit?.imageUrl ?? '');
     const [imageInputKey, setImageInputKey] = useState(0);
 
@@ -77,11 +79,16 @@ export function ProductCreateForm({
         }
     };
 
-    const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
 
         setError('');
         setSuccessMessage('');
+
+        if (!user) {
+            setError('Нужно войти в аккаунт продавца');
+            return;
+        }
 
         const price = Number(formState.price.replace(',', '.'));
         const hasOldPrice = formState.oldPrice.trim().length > 0;
@@ -136,7 +143,7 @@ export function ProductCreateForm({
         const now = new Date().toISOString();
         const baseProduct = productToEdit ?? {
             id: crypto.randomUUID(),
-            sellerId: CURRENT_SELLER_ID,
+            sellerId: String(user.id),
             createdAt: now,
         };
 
@@ -157,18 +164,30 @@ export function ProductCreateForm({
             updatedAt: now,
         };
 
-        if (productToEdit) {
-            updateProduct(productPayload);
-            onSaved?.();
-            return;
+        setIsSubmitting(true);
+
+        try {
+            if (productToEdit) {
+                await updateProduct(productPayload);
+                onSaved?.();
+                return;
+            }
+
+            await createProduct(productPayload);
+
+            setFormState(initialFormState);
+            setImageUrl('');
+            setImageInputKey((current) => current + 1);
+            setSuccessMessage('Товар создан');
+        } catch (caughtError) {
+            setError(
+                caughtError instanceof Error
+                    ? caughtError.message
+                    : 'Не удалось сохранить товар',
+            );
+        } finally {
+            setIsSubmitting(false);
         }
-
-        createProduct(productPayload);
-
-        setFormState(initialFormState);
-        setImageUrl('');
-        setImageInputKey((current) => current + 1);
-        setSuccessMessage('Товар создан');
     };
 
     return (
@@ -347,8 +366,16 @@ export function ProductCreateForm({
                     <div className="form-success">{successMessage}</div>
                 )}
 
-                <button className="seller-submit-btn" type="submit">
-                    {isEditing ? 'Отправить на модерацию' : 'Создать карточку'}
+                <button
+                    className="seller-submit-btn"
+                    type="submit"
+                    disabled={isSubmitting}
+                >
+                    {isSubmitting
+                        ? 'Сохраняем...'
+                        : isEditing
+                          ? 'Отправить на модерацию'
+                          : 'Создать карточку'}
                 </button>
             </form>
         </section>
