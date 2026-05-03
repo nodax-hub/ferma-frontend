@@ -20,6 +20,7 @@ docker compose up --build
 - frontend: `http://localhost:7777`
 - backend healthcheck: `http://localhost:8888/health`
 - backend docs: `http://localhost:8888/docs`
+- тестовый админ: `admin@example.com` / `admin12345`
 
 Frontend обращается к backend через относительный путь `/api`.
 
@@ -33,7 +34,7 @@ docker compose down
 
 Пример для сервера лежит в `docker-compose.deploy.example.yml`.
 
-Перед запуском замени `SECRET_KEY` на секретное значение:
+Перед запуском замени `SECRET_KEY` на секретное значение. Чтобы создать администратора при старте backend, укажи `ADMIN_EMAIL` и `ADMIN_PASSWORD` в окружении backend. Пароль должен быть не короче 8 символов.
 
 ```powershell
 docker compose -f docker-compose.deploy.example.yml up -d

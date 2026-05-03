@@ -234,7 +234,7 @@ function ProductsAdminList({
 
                                 <div>
                                     <h3>{product.name}</h3>
-                                    <p>{product.tag}</p>
+                                    <p>{formatProductMeta(product)}</p>
                                     <p>Продавец: {product.sellerId}</p>
                                     <p>Цена: {formatPrice(product.price)}</p>
                                 </div>
@@ -468,4 +468,8 @@ function formatDate(value: string): string {
         dateStyle: 'medium',
         timeStyle: 'short',
     }).format(new Date(value));
+}
+
+function formatProductMeta(product: Product): string {
+    return [product.weight, product.tag].filter(Boolean).join(' • ') || 'Без метки';
 }

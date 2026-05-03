@@ -1,7 +1,12 @@
+import { useState } from 'react';
+
+import type { Product } from '../models/Product';
 import { ProductCreateForm } from './ProductCreateForm';
 import { SellerProductsList } from './SellerProductsList';
 
 export function SellerDashboard() {
+    const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+
     return (
         <section className="seller-dashboard">
             <div className="seller-dashboard-title">
@@ -10,8 +15,13 @@ export function SellerDashboard() {
             </div>
 
             <div className="seller-layout">
-                <ProductCreateForm />
-                <SellerProductsList />
+                <ProductCreateForm
+                    key={editingProduct?.id ?? 'create-product'}
+                    productToEdit={editingProduct}
+                    onCancelEdit={() => setEditingProduct(null)}
+                    onSaved={() => setEditingProduct(null)}
+                />
+                <SellerProductsList onEditProduct={setEditingProduct} />
             </div>
         </section>
     );

@@ -4,7 +4,9 @@ import { ProductCard } from './ProductCard';
 export function ProductCarousel() {
     const { state } = useProducts();
     const approvedProducts = state.products.filter(
-        (product) => (product.status ?? 'approved') === 'approved',
+        (product) =>
+            (product.status ?? 'approved') === 'approved' &&
+            (product.isPublished ?? true),
     );
 
     return (

@@ -9,6 +9,7 @@ from app.api.deps import get_current_user, get_db
 from app.core.config import settings
 from app.core.security import create_access_token, get_password_hash, verify_password
 from app.models.user import User
+from app.models.user_role import UserRole
 from app.schemas.auth import Token, UserCreate, UserRead, UserUpdate
 
 router = APIRouter()
@@ -19,6 +20,12 @@ def register_user(
     payload: UserCreate,
     db: Session = Depends(get_db),
 ) -> User:
+    if payload.role == UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin account cannot be created from public registration",
+        )
+
     existing_user = db.scalar(select(User).where(User.email == payload.email))
 
     if existing_user:

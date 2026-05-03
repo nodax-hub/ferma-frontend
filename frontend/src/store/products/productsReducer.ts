@@ -11,6 +11,10 @@ export type ProductsAction =
     payload: Product;
 }
     | {
+    type: 'UPDATE_PRODUCT';
+    payload: Product;
+}
+    | {
     type: 'DELETE_PRODUCT';
     payload: Product['id'];
 }
@@ -41,6 +45,15 @@ export function productsReducer(
             };
         }
 
+        case 'UPDATE_PRODUCT': {
+            return {
+                ...state,
+                products: state.products.map((product) =>
+                    product.id === action.payload.id ? action.payload : product,
+                ),
+            };
+        }
+
         case 'DELETE_PRODUCT': {
             return {
                 ...state,
@@ -58,6 +71,9 @@ export function productsReducer(
                         ? {
                             ...product,
                             status: action.payload.status,
+                            isVerified: action.payload.status === 'approved',
+                            isPublished: action.payload.status === 'approved',
+                            updatedAt: new Date().toISOString(),
                         }
                         : product,
                 ),

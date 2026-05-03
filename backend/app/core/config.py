@@ -8,6 +8,9 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 60
     backend_cors_origins: str = "http://localhost:5173,http://localhost:7777"
+    admin_email: str = ""
+    admin_password: str = ""
+    admin_full_name: str = "Администратор"
 
     @property
     def cors_origins(self) -> list[str]:

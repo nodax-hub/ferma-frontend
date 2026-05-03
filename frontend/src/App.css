@@ -79,6 +79,7 @@
 
 .card {
   width: 170px;
+  min-height: 318px;
   background: #fff;
   border-radius: 12px;
   overflow: hidden;
@@ -112,6 +113,10 @@
   font-size: 12px;
   padding: 2px 6px;
   border-radius: 6px;
+  max-width: calc(100% - 16px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .card-content {
@@ -133,23 +138,35 @@
 .weight-tag {
   font-size: 12px;
   color: #2e7dab;
+  line-height: 1.2;
+  height: 1.2em;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .price {
   display: flex;
   gap: 6px;
   align-items: baseline;
+  height: 24px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .price-new {
   font-weight: 700;
   color: #000;
+  white-space: nowrap;
 }
 
 .price-old {
   text-decoration: line-through;
   font-size: 12px;
   color: #999;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .button-wrapper {
@@ -422,6 +439,12 @@
   padding: 10px 12px;
   font: inherit;
   resize: vertical;
+}
+
+.form-inline {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 92px;
+  gap: 8px;
 }
 
 .form-field input:focus,
@@ -705,6 +728,22 @@
   font-size: 22px;
 }
 
+.seller-form-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  align-items: flex-start;
+}
+
+.seller-form-header h2 {
+  margin: 0;
+}
+
+.seller-form-header .seller-auth-hint {
+  margin: 4px 0 0;
+}
+
 .seller-form {
   display: flex;
   flex-direction: column;
@@ -800,6 +839,18 @@
   background: transparent;
   color: #c62828;
   cursor: pointer;
+  font-size: 13px;
+}
+
+.seller-secondary-btn {
+  min-height: 32px;
+  border: 1px solid #ddd;
+  border-radius: 999px;
+  padding: 0 12px;
+  background: #fff;
+  color: #333;
+  cursor: pointer;
+  font: inherit;
   font-size: 13px;
 }
 

@@ -14,6 +14,8 @@ export function ProductCard({ product }: ProductCardProps) {
     } = useCart();
 
     const quantity = getProductQuantity(product.id);
+    const discount = calculateDiscount(product.price, product.oldPrice);
+    const meta = formatProductMeta(product);
 
     return (
         <article className="card">
@@ -26,18 +28,18 @@ export function ProductCard({ product }: ProductCardProps) {
                     />
                 )}
 
-                {product.discount && <div className="badge">{product.discount}</div>}
+                {discount && <div className="badge">{discount}</div>}
             </div>
 
             <div className="card-content">
                 <div className="product-name">{product.name}</div>
 
-                <div className="weight-tag">{product.tag}</div>
+                <div className="weight-tag">{meta}</div>
 
                 <div className="price">
                     <div className="price-new">{formatPrice(product.price)}</div>
 
-                    {product.oldPrice !== undefined && (
+                    {product.oldPrice !== undefined && product.oldPrice !== null && (
                         <div className="price-old">
                             {formatPrice(product.oldPrice)}
                         </div>
@@ -80,4 +82,23 @@ export function ProductCard({ product }: ProductCardProps) {
 
 function formatPrice(value: number): string {
     return `${value.toFixed(2).replace('.', ',')} ₽`;
+}
+
+function calculateDiscount(price: number, oldPrice?: number | null): string {
+    if (oldPrice === undefined || oldPrice === null || oldPrice <= price || oldPrice <= 0) {
+        return '';
+    }
+
+    const discount = Math.min(
+        100,
+        Math.max(1, Math.round(((oldPrice - price) / oldPrice) * 100)),
+    );
+
+    return `−${discount}%`;
+}
+
+function formatProductMeta(product: Product): string {
+    const parts = [product.weight, product.tag].filter(Boolean);
+
+    return parts.join(' • ');
 }

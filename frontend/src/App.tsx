@@ -170,22 +170,88 @@ function ShopPage({ onNavigate }: PageProps) {
 }
 
 function AdminPage({ onNavigate }: PageProps) {
+    const { user, logout, isLoading } = useAuth();
+    const canOpenAdmin = user?.role === 'admin';
+
     return (
         <main className="page">
             <header className="page-header">
-                <h1>Администратор</h1>
+                <div>
+                    <h1>Администратор</h1>
+                    <p>Вход и управление магазином</p>
+                </div>
 
-                <button
-                    className="nav-link-btn nav-link-btn-secondary"
-                    type="button"
-                    onClick={() => onNavigate('/')}
-                >
-                    В магазин
-                </button>
+                <div className="page-actions">
+                    {user && (
+                        <>
+                            <span className="user-chip">
+                                {user.full_name} · {getRoleLabel(user.role)}
+                            </span>
+
+                            <button
+                                className="nav-link-btn"
+                                type="button"
+                                onClick={logout}
+                            >
+                                Выйти
+                            </button>
+                        </>
+                    )}
+
+                    <button
+                        className="nav-link-btn nav-link-btn-secondary"
+                        type="button"
+                        onClick={() => onNavigate('/')}
+                    >
+                        В магазин
+                    </button>
+                </div>
             </header>
 
-            <AdminDashboard />
+            {isLoading ? (
+                <section className="seller-auth">
+                    <div className="seller-card seller-auth-card">
+                        <h2>Проверяем сессию</h2>
+                    </div>
+                </section>
+            ) : canOpenAdmin ? (
+                <AdminDashboard />
+            ) : user ? (
+                <section className="seller-auth">
+                    <div className="seller-card seller-auth-card">
+                        <h2>Нет доступа</h2>
+                        <p className="seller-auth-hint">
+                            Для этой страницы нужен аккаунт администратора.
+                        </p>
+                    </div>
+                </section>
+            ) : (
+                <AdminAuthPrompt onNavigate={onNavigate} />
+            )}
         </main>
+    );
+}
+
+function AdminAuthPrompt({ onNavigate }: PageProps) {
+    return (
+        <section className="seller-auth">
+            <div className="seller-card seller-auth-card">
+                <h2>Вход для администратора</h2>
+                <p className="seller-auth-hint">
+                    Войдите в аккаунт с ролью администратора, чтобы открыть панель.
+                </p>
+
+                <div className="auth-actions">
+                    <button
+                        className="seller-submit-btn"
+                        type="button"
+                        onClick={() => onNavigate('/login')}
+                    >
+                        Войти
+                    </button>
+                </div>
+            </div>
+        </section>
     );
 }
 
@@ -520,7 +586,7 @@ function AuthPage({ mode, onNavigate }: AuthPageProps) {
                 authorizedUser = await login(email.trim(), password);
             }
 
-            onNavigate(authorizedUser.role === 'seller' ? '/seller' : '/');
+            onNavigate(getPostAuthPath(authorizedUser.role));
         } catch (caughtError) {
             setError(
                 caughtError instanceof Error
@@ -746,6 +812,19 @@ function clearFieldError(
 
         return next;
     });
+}
+
+function getPostAuthPath(role: UserRole): string {
+    switch (role) {
+        case 'admin':
+            return '/admin';
+
+        case 'seller':
+            return '/seller';
+
+        default:
+            return '/';
+    }
 }
 
 function getRoleLabel(role: UserRole): string {

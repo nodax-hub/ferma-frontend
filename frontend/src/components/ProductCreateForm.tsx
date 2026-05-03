@@ -1,35 +1,54 @@
 import { useState, type ChangeEvent, type FormEvent } from 'react';
 
-import type { Product } from '../models/Product';
+import type { MeasurementUnit, Product, ProductTag } from '../models/Product';
 import { useProducts } from '../store/products/ProductsContext';
 
 type ProductFormState = {
     name: string;
-    tag: string;
-    discount: string;
+    tag: '' | ProductTag;
+    weightValue: string;
+    weightUnit: MeasurementUnit;
     price: string;
     oldPrice: string;
+    expiryDays: string;
 };
 
 const initialFormState: ProductFormState = {
     name: '',
     tag: '',
-    discount: '',
+    weightValue: '',
+    weightUnit: 'г',
     price: '',
     oldPrice: '',
+    expiryDays: '',
 };
 
 const CURRENT_SELLER_ID = 'demo-seller';
+const PRODUCT_TAGS: ProductTag[] = ['Без сахара', 'Халяль', 'Без лактозы', 'Белковый', 'Сливочный'];
+const MEASUREMENT_UNITS: MeasurementUnit[] = ['г', 'кг', 'мл', 'л', 'шт'];
+const DECIMAL_PATTERN = /^\d+(?:[,.]\d{1,2})?$/;
+const HTML_PATTERN = /<[^>]*>/;
 
-export function ProductCreateForm() {
-    const { createProduct } = useProducts();
+type ProductCreateFormProps = {
+    productToEdit?: Product | null;
+    onCancelEdit?: () => void;
+    onSaved?: () => void;
+};
+
+export function ProductCreateForm({
+    productToEdit = null,
+    onCancelEdit,
+    onSaved,
+}: ProductCreateFormProps) {
+    const { createProduct, updateProduct } = useProducts();
+    const isEditing = Boolean(productToEdit);
 
     const [formState, setFormState] =
-        useState<ProductFormState>(initialFormState);
+        useState<ProductFormState>(() => createInitialFormState(productToEdit));
 
     const [error, setError] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
-    const [imageUrl, setImageUrl] = useState('');
+    const [imageUrl, setImageUrl] = useState(productToEdit?.imageUrl ?? '');
     const [imageInputKey, setImageInputKey] = useState(0);
 
     const handleImageChange = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -68,60 +87,83 @@ export function ProductCreateForm() {
         const hasOldPrice = formState.oldPrice.trim().length > 0;
         const oldPrice = hasOldPrice
             ? Number(formState.oldPrice.replace(',', '.'))
-            : undefined;
+            : null;
+        const hasWeight = formState.weightValue.trim().length > 0;
+        const weightValue = Number(formState.weightValue.replace(',', '.'));
+        const hasExpiryDays = formState.expiryDays.trim().length > 0;
+        const expiryDays = hasExpiryDays ? Number(formState.expiryDays) : null;
+        const trimmedName = formState.name.trim();
 
-        if (!formState.name.trim()) {
-            setError('Введите название товара');
+        if (trimmedName.length < 3 || trimmedName.length > 120 || HTML_PATTERN.test(trimmedName)) {
+            setError('Название должно быть от 3 до 120 символов, без HTML');
             return;
         }
 
-        if (!formState.tag.trim()) {
-            setError('Введите тег товара');
-            return;
-        }
-
-        if (!Number.isFinite(price) || price <= 0) {
-            setError('Введите корректную цену');
+        if (!DECIMAL_PATTERN.test(formState.price.trim()) || !Number.isFinite(price) || price <= 0) {
+            setError('Введите корректную цену больше 0, максимум 2 знака после запятой');
             return;
         }
 
         if (
             hasOldPrice &&
-            (!Number.isFinite(oldPrice) || oldPrice === undefined || oldPrice <= 0)
+            (!DECIMAL_PATTERN.test(formState.oldPrice.trim()) ||
+                !Number.isFinite(oldPrice) ||
+                oldPrice === null ||
+                oldPrice <= 0)
         ) {
-            setError('Введите корректную старую цену');
+            setError('Введите корректную старую цену, максимум 2 знака после запятой');
             return;
         }
 
-        if (oldPrice !== undefined && oldPrice < price) {
-            setError('Старая цена не должна быть меньше текущей цены');
+        if (oldPrice !== null && oldPrice <= price) {
+            setError('Старая цена должна быть больше текущей цены');
             return;
         }
 
-        const discount = formState.discount.trim();
+        if (hasWeight && (!Number.isFinite(weightValue) || weightValue <= 0)) {
+            setError('Введите корректный вес или объем');
+            return;
+        }
 
-        const newProduct: Product = {
+        if (
+            hasExpiryDays &&
+            (!Number.isInteger(expiryDays) || expiryDays === null || expiryDays <= 0)
+        ) {
+            setError('Срок годности должен быть целым числом дней больше 0');
+            return;
+        }
+
+        const now = new Date().toISOString();
+        const baseProduct = productToEdit ?? {
             id: crypto.randomUUID(),
-            name: formState.name.trim(),
-            tag: formState.tag.trim(),
-            discount:
-                discount ||
-                (oldPrice !== undefined ? calculateDiscount(price, oldPrice) : ''),
-            price,
-            status: 'pending_review',
             sellerId: CURRENT_SELLER_ID,
-            createdAt: new Date().toISOString(),
+            createdAt: now,
         };
 
-        if (oldPrice !== undefined) {
-            newProduct.oldPrice = oldPrice;
+        const productPayload: Product = {
+            ...baseProduct,
+            name: trimmedName,
+            tag: formState.tag || null,
+            weight: hasWeight
+                ? formatWeight(weightValue, formState.weightUnit)
+                : null,
+            price,
+            oldPrice,
+            expiryDays,
+            imageUrl: imageUrl || null,
+            isVerified: false,
+            isPublished: false,
+            status: 'pending_review',
+            updatedAt: now,
+        };
+
+        if (productToEdit) {
+            updateProduct(productPayload);
+            onSaved?.();
+            return;
         }
 
-        if (imageUrl) {
-            newProduct.imageUrl = imageUrl;
-        }
-
-        createProduct(newProduct);
+        createProduct(productPayload);
 
         setFormState(initialFormState);
         setImageUrl('');
@@ -131,7 +173,26 @@ export function ProductCreateForm() {
 
     return (
         <section className="seller-card">
-            <h2>Создать товар</h2>
+            <div className="seller-form-header">
+                <div>
+                    <h2>{isEditing ? 'Редактировать товар' : 'Создать товар'}</h2>
+                    {isEditing && (
+                        <p className="seller-auth-hint">
+                            После сохранения карточка снова уйдет на проверку.
+                        </p>
+                    )}
+                </div>
+
+                {isEditing && (
+                    <button
+                        className="seller-danger-btn"
+                        type="button"
+                        onClick={onCancelEdit}
+                    >
+                        Отмена
+                    </button>
+                )}
+            </div>
 
             <form className="seller-form" onSubmit={handleSubmit}>
                 <label className="form-field">
@@ -165,6 +226,8 @@ export function ProductCreateForm() {
                     <span>Название товара</span>
                     <input
                         type="text"
+                        minLength={3}
+                        maxLength={120}
                         value={formState.name}
                         onChange={(event) =>
                             setFormState((current) => ({
@@ -177,24 +240,64 @@ export function ProductCreateForm() {
                 </label>
 
                 <label className="form-field">
+                    <span>Вес / объем</span>
+                    <div className="form-inline">
+                        <input
+                            type="text"
+                            inputMode="decimal"
+                            value={formState.weightValue}
+                            onChange={(event) =>
+                                setFormState((current) => ({
+                                    ...current,
+                                    weightValue: event.target.value,
+                                }))
+                            }
+                            placeholder="200"
+                        />
+
+                        <select
+                            value={formState.weightUnit}
+                            onChange={(event) =>
+                                setFormState((current) => ({
+                                    ...current,
+                                    weightUnit: event.target.value as MeasurementUnit,
+                                }))
+                            }
+                        >
+                            {MEASUREMENT_UNITS.map((unit) => (
+                                <option value={unit} key={unit}>
+                                    {unit}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                </label>
+
+                <label className="form-field">
                     <span>Тег</span>
-                    <input
-                        type="text"
+                    <select
                         value={formState.tag}
                         onChange={(event) =>
                             setFormState((current) => ({
                                 ...current,
-                                tag: event.target.value,
+                                tag: event.target.value as ProductFormState['tag'],
                             }))
                         }
-                        placeholder="Например: 1 л • Без лактозы"
-                    />
+                    >
+                        <option value="">Без тега</option>
+                        {PRODUCT_TAGS.map((tag) => (
+                            <option value={tag} key={tag}>
+                                {tag}
+                            </option>
+                        ))}
+                    </select>
                 </label>
 
                 <label className="form-field">
                     <span>Текущая цена</span>
                     <input
                         type="text"
+                        inputMode="decimal"
                         value={formState.price}
                         onChange={(event) =>
                             setFormState((current) => ({
@@ -210,6 +313,7 @@ export function ProductCreateForm() {
                     <span>Старая цена</span>
                     <input
                         type="text"
+                        inputMode="decimal"
                         value={formState.oldPrice}
                         onChange={(event) =>
                             setFormState((current) => ({
@@ -222,14 +326,15 @@ export function ProductCreateForm() {
                 </label>
 
                 <label className="form-field">
-                    <span>Скидка</span>
+                    <span>Срок годности, дней</span>
                     <input
                         type="text"
-                        value={formState.discount}
+                        inputMode="numeric"
+                        value={formState.expiryDays}
                         onChange={(event) =>
                             setFormState((current) => ({
                                 ...current,
-                                discount: event.target.value,
+                                expiryDays: event.target.value,
                             }))
                         }
                         placeholder="Можно оставить пустым"
@@ -243,21 +348,11 @@ export function ProductCreateForm() {
                 )}
 
                 <button className="seller-submit-btn" type="submit">
-                    Создать карточку
+                    {isEditing ? 'Отправить на модерацию' : 'Создать карточку'}
                 </button>
             </form>
         </section>
     );
-}
-
-function calculateDiscount(price: number, oldPrice: number): string {
-    if (oldPrice <= price) {
-        return '0%';
-    }
-
-    const discount = Math.round(((oldPrice - price) / oldPrice) * 100);
-
-    return `−${discount}%`;
 }
 
 function cropImageToSquare(file: File): Promise<string> {
@@ -306,4 +401,76 @@ function cropImageToSquare(file: File): Promise<string> {
 
         image.src = objectUrl;
     });
+}
+
+function createInitialFormState(product: Product | null): ProductFormState {
+    if (!product) {
+        return initialFormState;
+    }
+
+    const weight = parseWeight(product.weight);
+
+    return {
+        name: product.name,
+        tag: product.tag ?? '',
+        weightValue: weight.value,
+        weightUnit: weight.unit,
+        price: formatInputNumber(product.price),
+        oldPrice:
+            product.oldPrice === undefined || product.oldPrice === null
+                ? ''
+                : formatInputNumber(product.oldPrice),
+        expiryDays:
+            product.expiryDays === undefined || product.expiryDays === null
+                ? ''
+                : String(product.expiryDays),
+    };
+}
+
+function parseWeight(weight?: string | null): {
+    value: string;
+    unit: MeasurementUnit;
+} {
+    if (!weight) {
+        return {
+            value: '',
+            unit: 'г',
+        };
+    }
+
+    const match = weight.trim().match(/^(\d+(?:[,.]\d+)?)\s*(г|кг|мл|л|шт)$/);
+
+    if (!match) {
+        return {
+            value: '',
+            unit: 'г',
+        };
+    }
+
+    return {
+        value: match[1].replace(',', '.'),
+        unit: match[2] as MeasurementUnit,
+    };
+}
+
+function formatWeight(value: number, unit: MeasurementUnit): string {
+    if (unit === 'г' && value >= 1000) {
+        return `${formatNumber(value / 1000)} кг`;
+    }
+
+    if (unit === 'мл' && value >= 1000) {
+        return `${formatNumber(value / 1000)} л`;
+    }
+
+    return `${formatNumber(value)} ${unit}`;
+}
+
+function formatNumber(value: number): string {
+    return Number.isInteger(value)
+        ? String(value)
+        : value.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+}
+
+function formatInputNumber(value: number): string {
+    return String(value).replace(',', '.');
 }

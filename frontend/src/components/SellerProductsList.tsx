@@ -1,8 +1,13 @@
 import { useProducts } from '../store/products/ProductsContext';
+import type { Product } from '../models/Product';
 
 const CURRENT_SELLER_ID = 'demo-seller';
 
-export function SellerProductsList() {
+type SellerProductsListProps = {
+    onEditProduct: (product: Product) => void;
+};
+
+export function SellerProductsList({ onEditProduct }: SellerProductsListProps) {
     const { state, deleteProduct, clearProducts } = useProducts();
 
     const sellerProducts = state.products.filter(
@@ -35,7 +40,7 @@ export function SellerProductsList() {
                                 <div className="seller-product-name">{product.name}</div>
 
                                 <div className="seller-product-meta">
-                                    {product.tag}
+                                    {formatProductMeta(product)}
                                 </div>
 
                                 <div className="seller-product-meta">
@@ -51,6 +56,14 @@ export function SellerProductsList() {
                                 <div className="seller-product-price">
                                     {formatPrice(product.price)}
                                 </div>
+
+                                <button
+                                    className="seller-secondary-btn"
+                                    type="button"
+                                    onClick={() => onEditProduct(product)}
+                                >
+                                    Редактировать
+                                </button>
 
                                 <button
                                     className="seller-danger-btn"
@@ -77,6 +90,13 @@ function formatDate(value: string): string {
         dateStyle: 'medium',
         timeStyle: 'short',
     }).format(new Date(value));
+}
+
+function formatProductMeta(product: {
+    weight?: string | null;
+    tag?: string | null;
+}): string {
+    return [product.weight, product.tag].filter(Boolean).join(' • ') || 'Без метки';
 }
 
 function getProductStatusLabel(status = 'approved'): string {

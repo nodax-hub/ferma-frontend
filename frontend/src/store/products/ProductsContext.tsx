@@ -19,6 +19,7 @@ const PRODUCTS_STORAGE_KEY = 'products';
 type ProductsContextValue = {
     state: ProductsState;
     createProduct: (product: Product) => void;
+    updateProduct: (product: Product) => void;
     deleteProduct: (productId: Product['id']) => void;
     updateProductStatus: (
         productId: Product['id'],
@@ -54,6 +55,13 @@ export function ProductsProvider({ children }: ProductsProviderProps) {
         createProduct: (product) => {
             dispatch({
                 type: 'CREATE_PRODUCT',
+                payload: product,
+            });
+        },
+
+        updateProduct: (product) => {
+            dispatch({
+                type: 'UPDATE_PRODUCT',
                 payload: product,
             });
         },
