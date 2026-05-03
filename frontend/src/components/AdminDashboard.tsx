@@ -4,6 +4,7 @@ import type { OrderStatus } from '../models/Order';
 import type { Product, ProductStatus } from '../models/Product';
 import { useOrders } from '../store/orders/OrdersContext';
 import { useProducts } from '../store/products/ProductsContext';
+import { formatDate } from '../utils/dateFormat';
 
 type AdminSection =
     | 'review'
@@ -461,13 +462,6 @@ function getSellerStatusLabel(status: SellerStatus): string {
 
 function formatPrice(value: number): string {
     return `${value.toFixed(2).replace('.', ',')} ₽`;
-}
-
-function formatDate(value: string): string {
-    return new Intl.DateTimeFormat('ru-RU', {
-        dateStyle: 'medium',
-        timeStyle: 'short',
-    }).format(new Date(value));
 }
 
 function formatProductMeta(product: Product): string {

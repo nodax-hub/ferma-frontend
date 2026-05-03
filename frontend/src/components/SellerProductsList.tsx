@@ -1,6 +1,7 @@
 import { useProducts } from '../store/products/ProductsContext';
 import { useProductBatches } from '../store/productBatches/ProductBatchesContext';
 import type { Product } from '../models/Product';
+import { formatDate } from '../utils/dateFormat';
 
 const CURRENT_SELLER_ID = 'demo-seller';
 
@@ -89,13 +90,6 @@ export function SellerProductsList({ onEditProduct }: SellerProductsListProps) {
 
 function formatPrice(value: number): string {
     return `${value.toFixed(2).replace('.', ',')} ₽`;
-}
-
-function formatDate(value: string): string {
-    return new Intl.DateTimeFormat('ru-RU', {
-        dateStyle: 'medium',
-        timeStyle: 'short',
-    }).format(new Date(value));
 }
 
 function formatProductMeta(product: {

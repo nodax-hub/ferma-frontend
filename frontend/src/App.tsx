@@ -38,6 +38,7 @@ import {
     removeBuyerProfilePhoto,
     saveBuyerProfilePhoto,
 } from './utils/buyerProfilePhoto';
+import { addDaysToDate, formatDate, formatDateOnly } from './utils/dateFormat';
 
 function App() {
     return (
@@ -1765,28 +1766,14 @@ function formatPrice(value: number): string {
     return `${value.toFixed(2).replace('.', ',')} ₽`;
 }
 
-function formatDate(value: string): string {
-    return new Intl.DateTimeFormat('ru-RU', {
-        dateStyle: 'medium',
-        timeStyle: 'short',
-    }).format(new Date(value));
-}
-
-function formatDateOnly(value: string): string {
-    return new Intl.DateTimeFormat('ru-RU', {
-        dateStyle: 'medium',
-    }).format(new Date(value));
-}
-
 function formatExpiryDate(batch: ProductBatch, product: Product | null): string {
     if (!product?.expiryDays) {
         return 'не указан';
     }
 
-    const expiryDate = new Date(batch.manufacturedAt);
-    expiryDate.setDate(expiryDate.getDate() + product.expiryDays);
+    const expiryDate = addDaysToDate(batch.manufacturedAt, product.expiryDays);
 
-    return formatDateOnly(expiryDate.toISOString());
+    return expiryDate ? formatDateOnly(expiryDate.toISOString()) : 'дата не указана';
 }
 
 function formatProductMeta(product: Product): string {

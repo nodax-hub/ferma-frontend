@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 import type { Order, OrderStatus } from '../models/Order';
 import { useOrders } from '../store/orders/OrdersContext';
+import { formatDate } from '../utils/dateFormat';
 
 export function OrdersList() {
     const { state, cancelOrder, clearOrders } = useOrders();
@@ -151,9 +152,3 @@ function formatPrice(value: number): string {
     return `${value.toFixed(2).replace('.', ',')} ₽`;
 }
 
-function formatDate(value: string): string {
-    return new Intl.DateTimeFormat('ru-RU', {
-        dateStyle: 'medium',
-        timeStyle: 'short',
-    }).format(new Date(value));
-}
