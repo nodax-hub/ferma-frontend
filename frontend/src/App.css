@@ -769,6 +769,14 @@
   border-color: #4caf50;
 }
 
+.form-field input:disabled,
+.form-field textarea:disabled,
+.form-field select:disabled {
+  background: #f6f6f6;
+  color: #666;
+  cursor: not-allowed;
+}
+
 .form-field input.field-invalid,
 .form-field textarea.field-invalid,
 .form-field select.field-invalid {

@@ -4,8 +4,9 @@ import type { CustomerInfo, Order } from '../models/Order';
 import { useAuth } from '../store/auth/AuthContext';
 import { useCart } from '../store/cart/CartContext';
 import { useOrders } from '../store/orders/OrdersContext';
+import { useProductBatches } from '../store/productBatches/ProductBatchesContext';
 import { createId } from '../utils/createId';
-import { getSelectedBuyerAddress } from '../utils/buyerAddresses';
+import { getSelectedBuyerAddress, loadBuyerAddresses } from '../utils/buyerAddresses';
 
 const initialCustomerInfo: CustomerInfo = {
     name: '',
@@ -22,6 +23,7 @@ export function CheckoutForm({ onNavigate }: CheckoutFormProps) {
     const [customerInfo, setCustomerInfo] = useState<CustomerInfo>(
         initialCustomerInfo,
     );
+    const [selectedAddressId, setSelectedAddressId] = useState('');
 
     const [error, setError] = useState<string>('');
     const [successMessage, setSuccessMessage] = useState<string>('');
@@ -34,17 +36,46 @@ export function CheckoutForm({ onNavigate }: CheckoutFormProps) {
     } = useCart();
 
     const { createOrder } = useOrders();
+    const { decreaseProductQuantity, getProductQuantity } = useProductBatches();
     const { user } = useAuth();
     const selectedAddress = getSelectedBuyerAddress();
+    const savedAddresses = loadBuyerAddresses();
+    const profileAddress = user?.address
+        ? {
+            id: 'profile-address',
+            label: 'Основной адрес',
+            value: user.address,
+        }
+        : null;
+    const addressOptions = [
+        ...savedAddresses.map((address) => ({
+            id: address.id,
+            label: address.isSelected
+                ? `${address.label} · выбранный`
+                : address.label,
+            value: address.value,
+        })),
+        ...(profileAddress &&
+        !savedAddresses.some((address) => address.value === profileAddress.value)
+            ? [profileAddress]
+            : []),
+    ];
+    const defaultAddressId =
+        selectedAddressId ||
+        selectedAddress?.id ||
+        addressOptions[0]?.id ||
+        'manual';
+    const isManualAddress = defaultAddressId === 'manual';
+    const selectedAddressOption = addressOptions.find(
+        (address) => address.id === defaultAddressId,
+    );
     const formCustomerInfo: CustomerInfo = {
         ...customerInfo,
         name: customerInfo.name || user?.full_name || '',
         phone: customerInfo.phone || user?.phone || '',
-        address:
-            customerInfo.address ||
-            selectedAddress?.value ||
-            user?.address ||
-            '',
+        address: isManualAddress
+            ? customerInfo.address
+            : selectedAddressOption?.value || '',
     };
 
     const isCartEmpty = cartState.items.length === 0;
@@ -75,6 +106,15 @@ export function CheckoutForm({ onNavigate }: CheckoutFormProps) {
             return;
         }
 
+        const unavailableItem = cartState.items.find(
+            (item) => item.quantity > getProductQuantity(item.product.id),
+        );
+
+        if (unavailableItem) {
+            setError(`Недостаточно товара: ${unavailableItem.product.name}`);
+            return;
+        }
+
         const newOrder: Order = {
             id: createId(),
             createdAt: new Date().toISOString(),
@@ -94,6 +134,9 @@ export function CheckoutForm({ onNavigate }: CheckoutFormProps) {
         };
 
         createOrder(newOrder);
+        cartState.items.forEach((item) => {
+            decreaseProductQuantity(item.product.id, item.quantity);
+        });
         clearCart();
         setCustomerInfo(initialCustomerInfo);
         setSuccessMessage('Заказ оформлен');
@@ -185,10 +228,38 @@ export function CheckoutForm({ onNavigate }: CheckoutFormProps) {
                 </label>
 
                 <label className="form-field">
+                    <span>Выбор адреса</span>
+                    <select
+                        value={defaultAddressId}
+                        onChange={(event) => {
+                            const nextAddressId = event.target.value;
+                            const nextAddress = addressOptions.find(
+                                (address) => address.id === nextAddressId,
+                            );
+
+                            setSelectedAddressId(nextAddressId);
+                            setCustomerInfo((current) => ({
+                                ...current,
+                                address: nextAddress?.value ?? '',
+                            }));
+                        }}
+                    >
+                        {addressOptions.map((address) => (
+                            <option value={address.id} key={address.id}>
+                                {address.label}
+                            </option>
+                        ))}
+
+                        <option value="manual">Ввести адрес вручную</option>
+                    </select>
+                </label>
+
+                <label className="form-field">
                     <span>Адрес доставки</span>
                     <input
                         type="text"
                         value={formCustomerInfo.address}
+                        disabled={!isManualAddress}
                         onChange={(event) =>
                             setCustomerInfo((current) => ({
                                 ...current,
