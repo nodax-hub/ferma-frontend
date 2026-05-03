@@ -1,4 +1,5 @@
 import { useProducts } from '../store/products/ProductsContext';
+import { useProductBatches } from '../store/productBatches/ProductBatchesContext';
 import type { Product } from '../models/Product';
 
 const CURRENT_SELLER_ID = 'demo-seller';
@@ -9,6 +10,7 @@ type SellerProductsListProps = {
 
 export function SellerProductsList({ onEditProduct }: SellerProductsListProps) {
     const { state, deleteProduct, clearProducts } = useProducts();
+    const { getProductQuantity } = useProductBatches();
 
     const sellerProducts = state.products.filter(
         (product) => product.sellerId === CURRENT_SELLER_ID,
@@ -49,6 +51,10 @@ export function SellerProductsList({ onEditProduct }: SellerProductsListProps) {
 
                                 <div className="seller-product-meta">
                                     Статус: {getProductStatusLabel(product.status)}
+                                </div>
+
+                                <div className="seller-product-meta">
+                                    Остаток по партиям: {getProductQuantity(product.id)} шт.
                                 </div>
                             </div>
 

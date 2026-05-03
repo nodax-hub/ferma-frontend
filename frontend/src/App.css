@@ -995,8 +995,14 @@
   }
 
   .buyer-profile-layout,
-  .buyer-address-layout {
+  .buyer-address-layout,
+  .seller-home-layout,
+  .seller-batches-layout {
     grid-template-columns: 1fr;
+  }
+
+  .seller-batches-panel {
+    grid-column: auto;
   }
 }
 
@@ -1043,6 +1049,144 @@
 
 .seller-dashboard {
   margin-top: 0;
+}
+
+.seller-home-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 420px) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.seller-hero-panel {
+  background: #fff;
+  border-radius: 16px;
+  padding: 18px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.seller-hero-panel h1 {
+  margin: 0 0 8px;
+  font-size: 26px;
+}
+
+.seller-hero-panel p {
+  margin: 0;
+  color: #666;
+  line-height: 1.45;
+}
+
+.seller-status-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  color: #777;
+  font-size: 14px;
+}
+
+.seller-status-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  border-radius: 999px;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.seller-status-checking {
+  background: #fff8e1;
+  color: #f57f17;
+}
+
+.seller-status-approved {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.seller-status-rejected {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.seller-home-menu {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.seller-profile-summary {
+  align-items: center;
+}
+
+.seller-placeholder-panel > svg {
+  width: 42px;
+  height: 42px;
+  color: #2e7d32;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  margin-bottom: 10px;
+}
+
+.seller-placeholder-panel p {
+  margin: 0 0 14px;
+  color: #666;
+  line-height: 1.45;
+}
+
+.seller-order-list {
+  display: grid;
+  gap: 12px;
+}
+
+.seller-order-card {
+  border: 1px solid #eee;
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.seller-order-card h3 {
+  margin: 0 0 4px;
+  font-size: 16px;
+}
+
+.seller-order-card p {
+  margin: 0 0 4px;
+  color: #666;
+  font-size: 13px;
+}
+
+.seller-batches-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
+  gap: 24px;
+  align-items: start;
+}
+
+.seller-batches-panel {
+  grid-column: 1 / -1;
+}
+
+.seller-stock-list {
+  display: grid;
+  gap: 10px;
+}
+
+.seller-stock-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 10px;
+}
+
+.seller-stock-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
 }
 
 .seller-dashboard-title {

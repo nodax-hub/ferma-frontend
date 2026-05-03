@@ -16,11 +16,17 @@ import { CheckoutForm } from './components/CheckoutForm';
 import { OrdersList } from './components/OrdersList';
 import { ProductCarousel } from './components/ProductCarousel';
 import { SellerDashboard } from './components/SellerDashboard';
+import type { Product } from './models/Product';
+import type { ProductBatch } from './models/ProductBatch';
 import type { AuthUser, RegisterPayload, UserRole } from './api/client';
 import { AuthProvider, useAuth } from './store/auth/AuthContext';
 import { CartProvider, useCart } from './store/cart/CartContext';
-import { OrdersProvider } from './store/orders/OrdersContext';
-import { ProductsProvider } from './store/products/ProductsContext';
+import { OrdersProvider, useOrders } from './store/orders/OrdersContext';
+import {
+    ProductBatchesProvider,
+    useProductBatches,
+} from './store/productBatches/ProductBatchesContext';
+import { ProductsProvider, useProducts } from './store/products/ProductsContext';
 import {
     loadBuyerAddresses,
     saveBuyerAddresses,
@@ -36,11 +42,13 @@ function App() {
     return (
         <AuthProvider>
             <ProductsProvider>
-                <OrdersProvider>
-                    <CartProvider>
-                        <AppRoutes />
-                    </CartProvider>
-                </OrdersProvider>
+                <ProductBatchesProvider>
+                    <OrdersProvider>
+                        <CartProvider>
+                            <AppRoutes />
+                        </CartProvider>
+                    </OrdersProvider>
+                </ProductBatchesProvider>
             </ProductsProvider>
         </AuthProvider>
     );
@@ -66,8 +74,8 @@ function AppRoutes() {
         setPath(nextPath);
     };
 
-    if (path === '/seller') {
-        return <SellerPage onNavigate={navigate} />;
+    if (path.startsWith('/seller')) {
+        return <SellerPage path={path} onNavigate={navigate} />;
     }
 
     if (path === '/checkout') {
@@ -266,39 +274,16 @@ function CheckoutPage({ onNavigate }: PageProps) {
     );
 }
 
-function SellerPage({ onNavigate }: PageProps) {
+type SellerPageProps = PageProps & {
+    path: string;
+};
+
+function SellerPage({ onNavigate, path }: SellerPageProps) {
     const { user, logout, isLoading } = useAuth();
     const canManageProducts = user?.role === 'seller' || user?.role === 'admin';
 
     return (
         <main className="page seller-page">
-            <header className="page-header">
-                <div>
-                    <h1>Страница продавца</h1>
-                    <p>Авторизация и управление товарами</p>
-                </div>
-
-                <div className="page-actions">
-                    {user && (
-                        <button
-                            className="nav-link-btn"
-                            type="button"
-                            onClick={logout}
-                        >
-                            Выйти
-                        </button>
-                    )}
-
-                    <button
-                        className="nav-link-btn nav-link-btn-secondary"
-                        type="button"
-                        onClick={() => onNavigate('/')}
-                    >
-                        В магазин
-                    </button>
-                </div>
-            </header>
-
             {isLoading ? (
                 <section className="seller-auth">
                     <div className="seller-card seller-auth-card">
@@ -306,20 +291,702 @@ function SellerPage({ onNavigate }: PageProps) {
                     </div>
                 </section>
             ) : canManageProducts ? (
-                <SellerDashboard />
+                <SellerWorkspace
+                    path={path}
+                    user={user}
+                    logout={logout}
+                    onNavigate={onNavigate}
+                />
             ) : user ? (
-                <section className="seller-auth">
-                    <div className="seller-card seller-auth-card">
-                        <h2>Нет доступа</h2>
-                        <p className="seller-auth-hint">
-                            Для этой страницы нужен аккаунт продавца.
-                        </p>
-                    </div>
-                </section>
+                <>
+                    <SellerPageHeader
+                        title="Страница продавца"
+                        subtitle="Авторизация и управление товарами"
+                        onNavigate={onNavigate}
+                    />
+
+                    <section className="seller-auth">
+                        <div className="seller-card seller-auth-card">
+                            <h2>Нет доступа</h2>
+                            <p className="seller-auth-hint">
+                                Для этой страницы нужен аккаунт продавца.
+                            </p>
+                        </div>
+                    </section>
+                </>
             ) : (
-                <SellerAuthPrompt onNavigate={onNavigate} />
+                <>
+                    <SellerPageHeader
+                        title="Страница продавца"
+                        subtitle="Авторизация и управление товарами"
+                        onNavigate={onNavigate}
+                    />
+                    <SellerAuthPrompt onNavigate={onNavigate} />
+                </>
             )}
         </main>
+    );
+}
+
+type SellerWorkspaceProps = PageProps & {
+    path: string;
+    user: AuthUser;
+    logout: () => void;
+};
+
+function SellerWorkspace({
+    path,
+    user,
+    logout,
+    onNavigate,
+}: SellerWorkspaceProps) {
+    switch (path) {
+        case '/seller/profile':
+            return (
+                <SellerProfilePage
+                    user={user}
+                    logout={logout}
+                    onNavigate={onNavigate}
+                />
+            );
+
+        case '/seller/documents':
+            return <SellerDocumentsPage user={user} onNavigate={onNavigate} />;
+
+        case '/seller/orders':
+            return (
+                <SellerOrdersPage
+                    mode="active"
+                    user={user}
+                    onNavigate={onNavigate}
+                />
+            );
+
+        case '/seller/order-history':
+            return (
+                <SellerOrdersPage
+                    mode="history"
+                    user={user}
+                    onNavigate={onNavigate}
+                />
+            );
+
+        case '/seller/add-product':
+            return <SellerAddProductPage user={user} onNavigate={onNavigate} />;
+
+        case '/seller/add-batch':
+            return <SellerBatchesPage user={user} onNavigate={onNavigate} />;
+
+        case '/seller/checks':
+            return <SellerChecksPage user={user} onNavigate={onNavigate} />;
+
+        default:
+            return <SellerHomePage user={user} onNavigate={onNavigate} />;
+    }
+}
+
+function SellerHomePage({ user, onNavigate }: PageProps & { user: AuthUser }) {
+    return (
+        <>
+            <header className="page-header buyer-header">
+                <div className="brand-block">
+                    <span className="brand-name">Ферма</span>
+                    <span className="brand-subtitle">
+                        кабинет продавца натуральных продуктов
+                    </span>
+                </div>
+
+                <div className="page-actions">
+                    <button
+                        className="icon-nav-btn"
+                        type="button"
+                        aria-label="Заказы"
+                        title="Заказы"
+                        onClick={() => onNavigate('/seller/orders')}
+                    >
+                        <ClipboardIcon />
+                    </button>
+
+                    <button
+                        className="icon-nav-btn"
+                        type="button"
+                        aria-label="Личный кабинет"
+                        title="Личный кабинет"
+                        onClick={() => onNavigate('/seller/profile')}
+                    >
+                        <UserBustIcon />
+                    </button>
+                </div>
+            </header>
+
+            <section className="seller-home-layout">
+                <div className="seller-hero-panel">
+                    <h1>Продажи фермерских продуктов</h1>
+                    <p>
+                        Управляйте товарами, партиями, проверками качества и
+                        заказами на доставку.
+                    </p>
+
+                    <div className="seller-status-row">
+                        <span className="seller-status-chip seller-status-checking">
+                            {getSellerVerificationStatusLabel(user)}
+                        </span>
+                        <span>{formatBuyerLine(user.full_name, user.phone)}</span>
+                    </div>
+                </div>
+
+                <div className="buyer-menu seller-home-menu">
+                    <SellerMenuButton
+                        title="Активные заказы"
+                        description="Товары, которые нужно подготовить к доставке"
+                        icon={<ClipboardIcon />}
+                        onClick={() => onNavigate('/seller/orders')}
+                    />
+                    <SellerMenuButton
+                        title="Добавить товар"
+                        description="Карточка товара с фото и характеристиками"
+                        icon={<PlusIcon />}
+                        onClick={() => onNavigate('/seller/add-product')}
+                    />
+                    <SellerMenuButton
+                        title="Добавить партию"
+                        description="Дата изготовления и количество товара"
+                        icon={<PackageIcon />}
+                        onClick={() => onNavigate('/seller/add-batch')}
+                    />
+                    <SellerMenuButton
+                        title="История проверок"
+                        description="Ожидает, подтверждён, отклонён"
+                        icon={<CheckCircleIcon />}
+                        onClick={() => onNavigate('/seller/checks')}
+                    />
+                </div>
+            </section>
+        </>
+    );
+}
+
+function SellerProfilePage({
+    user,
+    logout,
+    onNavigate,
+}: PageProps & {
+    user: AuthUser;
+    logout: () => void;
+}) {
+    return (
+        <>
+            <SellerPageHeader
+                title="Личный кабинет продавца"
+                subtitle={formatBuyerLine(user.full_name, user.phone)}
+                onNavigate={onNavigate}
+                backHome
+            />
+
+            <section className="buyer-profile-layout">
+                <div className="buyer-profile-summary seller-profile-summary">
+                    <div className="buyer-avatar">
+                        <UserBustIcon />
+                    </div>
+
+                    <div>
+                        <h2>{user.full_name}</h2>
+                        <p>{user.phone || 'Телефон не указан'}</p>
+                        <span className="seller-status-chip seller-status-checking">
+                            {getSellerVerificationStatusLabel(user)}
+                        </span>
+                    </div>
+                </div>
+
+                <div className="buyer-menu">
+                    <SellerMenuButton
+                        title="Загрузить документы"
+                        description="Заглушка для будущей проверки фермера"
+                        icon={<FileIcon />}
+                        onClick={() => onNavigate('/seller/documents')}
+                    />
+                    <SellerMenuButton
+                        title="Активные заказы"
+                        description="Партии и товары, требующие доставки"
+                        icon={<ClipboardIcon />}
+                        onClick={() => onNavigate('/seller/orders')}
+                    />
+                    <SellerMenuButton
+                        title="История заказов"
+                        description="Завершённые и отменённые заказы"
+                        icon={<HistoryIcon />}
+                        onClick={() => onNavigate('/seller/order-history')}
+                    />
+                    <SellerMenuButton
+                        title="Добавить товар"
+                        description="Форма товара и фото"
+                        icon={<PlusIcon />}
+                        onClick={() => onNavigate('/seller/add-product')}
+                    />
+                    <SellerMenuButton
+                        title="Добавить партию"
+                        description="Количество, дата изготовления, остаток"
+                        icon={<PackageIcon />}
+                        onClick={() => onNavigate('/seller/add-batch')}
+                    />
+                    <SellerMenuButton
+                        title="История проверок"
+                        description="Статусы проверки товаров"
+                        icon={<CheckCircleIcon />}
+                        onClick={() => onNavigate('/seller/checks')}
+                    />
+
+                    <button
+                        className="nav-link-btn nav-link-btn-secondary"
+                        type="button"
+                        onClick={logout}
+                    >
+                        Выйти
+                    </button>
+                </div>
+            </section>
+        </>
+    );
+}
+
+function SellerDocumentsPage({
+    user,
+    onNavigate,
+}: PageProps & { user: AuthUser }) {
+    return (
+        <>
+            <SellerPageHeader
+                title="Документы продавца"
+                subtitle={formatBuyerLine(user.full_name, user.phone)}
+                onNavigate={onNavigate}
+                backHome
+            />
+
+            <section className="buyer-content-narrow">
+                <div className="buyer-page-panel seller-placeholder-panel">
+                    <FileIcon />
+                    <h2>Загрузка документов</h2>
+                    <p>
+                        Здесь будет загрузка документов фермерского хозяйства,
+                        сертификатов и подтверждений качества. Сейчас это
+                        подготовленная страница-заглушка.
+                    </p>
+                    <span className="seller-status-chip seller-status-checking">
+                        Статус: в проверке
+                    </span>
+                </div>
+            </section>
+        </>
+    );
+}
+
+function SellerAddProductPage({
+    user,
+    onNavigate,
+}: PageProps & { user: AuthUser }) {
+    return (
+        <>
+            <SellerPageHeader
+                title="Добавить товар"
+                subtitle={formatBuyerLine(user.full_name, user.phone)}
+                onNavigate={onNavigate}
+                backHome
+            />
+
+            <SellerDashboard />
+        </>
+    );
+}
+
+function SellerOrdersPage({
+    mode,
+    user,
+    onNavigate,
+}: PageProps & {
+    mode: 'active' | 'history';
+    user: AuthUser;
+}) {
+    const { state: ordersState } = useOrders();
+    const { state: productsState } = useProducts();
+    const sellerProducts = productsState.products.filter(
+        (product) => product.sellerId === 'demo-seller',
+    );
+    const sellerProductIds = new Set(sellerProducts.map((product) => product.id));
+    const matchingOrders = ordersState.orders.filter((order) => {
+        const hasSellerItems = order.items.some((item) =>
+            sellerProductIds.has(item.product.id),
+        );
+        const isActive =
+            order.status === 'created' || order.status === 'processing';
+
+        return hasSellerItems && (mode === 'active' ? isActive : !isActive);
+    });
+
+    return (
+        <>
+            <SellerPageHeader
+                title={mode === 'active' ? 'Активные заказы' : 'История заказов'}
+                subtitle={formatBuyerLine(user.full_name, user.phone)}
+                onNavigate={onNavigate}
+                backHome
+            />
+
+            <section className="buyer-content-narrow">
+                <div className="buyer-page-panel">
+                    {matchingOrders.length === 0 ? (
+                        <p className="seller-empty">
+                            {mode === 'active'
+                                ? 'Активных заказов нет'
+                                : 'История заказов пока пустая'}
+                        </p>
+                    ) : (
+                        <div className="seller-order-list">
+                            {matchingOrders.map((order) => {
+                                const sellerItems = order.items.filter((item) =>
+                                    sellerProductIds.has(item.product.id),
+                                );
+
+                                return (
+                                    <article
+                                        className="seller-order-card"
+                                        key={order.id}
+                                    >
+                                        <div className="order-main">
+                                            <div>
+                                                <h3>Заказ №{order.id.slice(0, 8)}</h3>
+                                                <p>{formatDate(order.createdAt)}</p>
+                                                <p>
+                                                    {order.customer.name},{' '}
+                                                    {order.customer.phone}
+                                                </p>
+                                            </div>
+
+                                            <span className="admin-status">
+                                                {mode === 'active'
+                                                    ? 'Требует доставки'
+                                                    : getOrderStatusLabel(order.status)}
+                                            </span>
+                                        </div>
+
+                                        <div className="order-items">
+                                            {sellerItems.map((item) => (
+                                                <div
+                                                    className="order-item"
+                                                    key={item.product.id}
+                                                >
+                                                    <span>{item.product.name}</span>
+                                                    <strong>{item.quantity} шт.</strong>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </article>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            </section>
+        </>
+    );
+}
+
+function SellerBatchesPage({
+    user,
+    onNavigate,
+}: PageProps & { user: AuthUser }) {
+    const { state: productsState } = useProducts();
+    const {
+        state: batchesState,
+        createBatch,
+        deleteBatch,
+        getProductQuantity,
+    } = useProductBatches();
+    const sellerProducts = productsState.products.filter(
+        (product) => product.sellerId === 'demo-seller',
+    );
+    const [productId, setProductId] = useState(sellerProducts[0]?.id ?? '');
+    const [manufacturedAt, setManufacturedAt] = useState('');
+    const [quantity, setQuantity] = useState('');
+    const [error, setError] = useState('');
+
+    const sellerBatches = batchesState.batches.filter(
+        (batch) => batch.sellerId === 'demo-seller',
+    );
+
+    const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+
+        const parsedQuantity = Number(quantity);
+
+        setError('');
+
+        if (!productId) {
+            setError('Выберите товар');
+            return;
+        }
+
+        if (!manufacturedAt) {
+            setError('Укажите дату изготовления');
+            return;
+        }
+
+        if (!Number.isInteger(parsedQuantity) || parsedQuantity <= 0) {
+            setError('Количество в партии обязательно и должно быть больше 0');
+            return;
+        }
+
+        const now = new Date().toISOString();
+
+        createBatch({
+            id: crypto.randomUUID(),
+            productId,
+            sellerId: 'demo-seller',
+            manufacturedAt,
+            quantity: parsedQuantity,
+            initialQuantity: parsedQuantity,
+            createdAt: now,
+            updatedAt: now,
+        });
+
+        setManufacturedAt('');
+        setQuantity('');
+    };
+
+    return (
+        <>
+            <SellerPageHeader
+                title="Добавить партию"
+                subtitle={formatBuyerLine(user.full_name, user.phone)}
+                onNavigate={onNavigate}
+                backHome
+            />
+
+            <section className="seller-batches-layout">
+                <div className="buyer-page-panel">
+                    <h2>Остатки по товарам</h2>
+                    <div className="seller-stock-list">
+                        {sellerProducts.map((product) => (
+                            <div className="seller-stock-row" key={product.id}>
+                                <span>{product.name}</span>
+                                <strong>{getProductQuantity(product.id)} шт.</strong>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                <form className="buyer-page-panel seller-form" onSubmit={handleSubmit}>
+                    <h2>Новая партия</h2>
+
+                    <label className="form-field">
+                        <span>Товар</span>
+                        <select
+                            value={productId}
+                            onChange={(event) => setProductId(event.target.value)}
+                        >
+                            {sellerProducts.map((product) => (
+                                <option value={product.id} key={product.id}>
+                                    {product.name}
+                                </option>
+                            ))}
+                        </select>
+                    </label>
+
+                    <label className="form-field">
+                        <span>Дата изготовления</span>
+                        <input
+                            type="date"
+                            value={manufacturedAt}
+                            onChange={(event) =>
+                                setManufacturedAt(event.target.value)
+                            }
+                        />
+                    </label>
+
+                    <label className="form-field">
+                        <span>Количество, шт.</span>
+                        <input
+                            type="text"
+                            inputMode="numeric"
+                            value={quantity}
+                            onChange={(event) => setQuantity(event.target.value)}
+                            placeholder="Например: 30"
+                        />
+                    </label>
+
+                    {error && <div className="form-error">{error}</div>}
+
+                    <button className="seller-submit-btn" type="submit">
+                        Добавить партию
+                    </button>
+                </form>
+
+                <div className="buyer-page-panel seller-batches-panel">
+                    <h2>Партии</h2>
+
+                    {sellerBatches.length === 0 ? (
+                        <p className="seller-empty">Партий пока нет</p>
+                    ) : (
+                        <div className="seller-products-list">
+                            {sellerBatches.map((batch) => {
+                                const product = sellerProducts.find(
+                                    (item) => item.id === batch.productId,
+                                );
+
+                                return (
+                                    <article
+                                        className="seller-product-item"
+                                        key={batch.id}
+                                    >
+                                        <div>
+                                            <div className="seller-product-name">
+                                                {product?.name ?? 'Товар удалён'}
+                                            </div>
+                                            <div className="seller-product-meta">
+                                                Изготовлено:{' '}
+                                                {formatDateOnly(batch.manufacturedAt)}
+                                            </div>
+                                            <div className="seller-product-meta">
+                                                Годен до:{' '}
+                                                {formatExpiryDate(
+                                                    batch,
+                                                    product ?? null,
+                                                )}
+                                            </div>
+                                            <div className="seller-product-meta">
+                                                Остаток: {batch.quantity} из{' '}
+                                                {batch.initialQuantity} шт.
+                                            </div>
+                                        </div>
+
+                                        <button
+                                            className="seller-danger-btn"
+                                            type="button"
+                                            onClick={() => deleteBatch(batch.id)}
+                                        >
+                                            Удалить
+                                        </button>
+                                    </article>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            </section>
+        </>
+    );
+}
+
+function SellerChecksPage({
+    user,
+    onNavigate,
+}: PageProps & { user: AuthUser }) {
+    const { state } = useProducts();
+    const sellerProducts = state.products.filter(
+        (product) => product.sellerId === 'demo-seller',
+    );
+
+    return (
+        <>
+            <SellerPageHeader
+                title="История проверок"
+                subtitle={formatBuyerLine(user.full_name, user.phone)}
+                onNavigate={onNavigate}
+                backHome
+            />
+
+            <section className="buyer-content-narrow">
+                <div className="buyer-page-panel">
+                    {sellerProducts.length === 0 ? (
+                        <p className="seller-empty">Товаров пока нет</p>
+                    ) : (
+                        <div className="admin-list">
+                            {sellerProducts.map((product) => (
+                                <article
+                                    className="admin-list-item"
+                                    key={product.id}
+                                >
+                                    <div>
+                                        <h3>{product.name}</h3>
+                                        <p>{formatProductMeta(product)}</p>
+                                        <p>
+                                            Обновлено:{' '}
+                                            {formatDate(product.updatedAt)}
+                                        </p>
+                                    </div>
+
+                                    <span className="admin-status">
+                                        {getProductStatusLabel(product.status)}
+                                    </span>
+                                </article>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </section>
+        </>
+    );
+}
+
+function SellerPageHeader({
+    title,
+    subtitle,
+    onNavigate,
+    backHome = false,
+}: PageProps & {
+    title: string;
+    subtitle: string;
+    backHome?: boolean;
+}) {
+    return (
+        <header className="page-header buyer-header">
+            <div>
+                <h1>{title}</h1>
+                <p>{subtitle}</p>
+            </div>
+
+            <div className="page-actions">
+                {backHome && (
+                    <button
+                        className="nav-link-btn nav-link-btn-secondary"
+                        type="button"
+                        onClick={() => onNavigate('/seller')}
+                    >
+                        <HomeIcon />
+                        Главная
+                    </button>
+                )}
+
+                <button
+                    className="nav-link-btn nav-link-btn-secondary"
+                    type="button"
+                    onClick={() => onNavigate('/')}
+                >
+                    В магазин
+                </button>
+            </div>
+        </header>
+    );
+}
+
+function SellerMenuButton({
+    title,
+    description,
+    icon,
+    onClick,
+}: {
+    title: string;
+    description: string;
+    icon: ReactNode;
+    onClick: () => void;
+}) {
+    return (
+        <button className="buyer-menu-item" type="button" onClick={onClick}>
+            <span className="buyer-menu-icon">{icon}</span>
+            <span>
+                <strong>{title}</strong>
+                <small>{description}</small>
+            </span>
+        </button>
     );
 }
 
@@ -1009,6 +1676,71 @@ function formatPrice(value: number): string {
     return `${value.toFixed(2).replace('.', ',')} ₽`;
 }
 
+function formatDate(value: string): string {
+    return new Intl.DateTimeFormat('ru-RU', {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+    }).format(new Date(value));
+}
+
+function formatDateOnly(value: string): string {
+    return new Intl.DateTimeFormat('ru-RU', {
+        dateStyle: 'medium',
+    }).format(new Date(value));
+}
+
+function formatExpiryDate(batch: ProductBatch, product: Product | null): string {
+    if (!product?.expiryDays) {
+        return 'не указан';
+    }
+
+    const expiryDate = new Date(batch.manufacturedAt);
+    expiryDate.setDate(expiryDate.getDate() + product.expiryDays);
+
+    return formatDateOnly(expiryDate.toISOString());
+}
+
+function formatProductMeta(product: Product): string {
+    return [product.weight, product.tag].filter(Boolean).join(' • ') || 'Без метки';
+}
+
+function getSellerVerificationStatusLabel(user: AuthUser): string {
+    return user.role === 'admin' ? 'Подтверждён' : 'В проверке';
+}
+
+function getProductStatusLabel(status = 'approved'): string {
+    switch (status) {
+        case 'pending_review':
+            return 'Ожидает';
+
+        case 'approved':
+            return 'Подтверждён';
+
+        case 'rejected':
+            return 'Отклонён';
+
+        default:
+            return status;
+    }
+}
+
+function getOrderStatusLabel(status: string): string {
+    switch (status) {
+        case 'created':
+        case 'processing':
+            return 'Активный';
+
+        case 'completed':
+            return 'Завершён';
+
+        case 'cancelled':
+            return 'Отменён';
+
+        default:
+            return status;
+    }
+}
+
 function cropProfilePhoto(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
         const image = new Image();
@@ -1108,6 +1840,53 @@ function PencilIcon() {
         <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="m4 20 4.5-1 10-10-3.5-3.5-10 10L4 20z" />
             <path d="m14 6 3.5 3.5" />
+        </svg>
+    );
+}
+
+function FileIcon() {
+    return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M7 3h7l5 5v13H7z" />
+            <path d="M14 3v5h5" />
+            <path d="M9 13h6M9 17h6" />
+        </svg>
+    );
+}
+
+function PackageIcon() {
+    return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m3 7 9-4 9 4-9 4z" />
+            <path d="M3 7v10l9 4 9-4V7" />
+            <path d="M12 11v10" />
+        </svg>
+    );
+}
+
+function CheckCircleIcon() {
+    return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M21 11.5V12a9 9 0 1 1-5.3-8.2" />
+            <path d="m9 12 2 2 9-9" />
+        </svg>
+    );
+}
+
+function HistoryIcon() {
+    return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 12a9 9 0 1 0 3-6.7" />
+            <path d="M3 4v5h5" />
+            <path d="M12 7v5l3 2" />
+        </svg>
+    );
+}
+
+function PlusIcon() {
+    return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 5v14M5 12h14" />
         </svg>
     );
 }
