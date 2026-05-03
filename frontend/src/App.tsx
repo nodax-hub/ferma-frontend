@@ -3,6 +3,7 @@ import './App.css';
 import {
     useEffect,
     useState,
+    type ChangeEvent,
     type Dispatch,
     type FormEvent,
     type ReactNode,
@@ -15,7 +16,7 @@ import { CheckoutForm } from './components/CheckoutForm';
 import { OrdersList } from './components/OrdersList';
 import { ProductCarousel } from './components/ProductCarousel';
 import { SellerDashboard } from './components/SellerDashboard';
-import type { RegisterPayload, UserRole } from './api/client';
+import type { AuthUser, RegisterPayload, UserRole } from './api/client';
 import { AuthProvider, useAuth } from './store/auth/AuthContext';
 import { CartProvider, useCart } from './store/cart/CartContext';
 import { OrdersProvider } from './store/orders/OrdersContext';
@@ -25,6 +26,11 @@ import {
     saveBuyerAddresses,
     type BuyerAddress,
 } from './utils/buyerAddresses';
+import {
+    loadBuyerProfilePhoto,
+    removeBuyerProfilePhoto,
+    saveBuyerProfilePhoto,
+} from './utils/buyerProfilePhoto';
 
 function App() {
     return (
@@ -387,16 +393,7 @@ function ProfilePage({ onNavigate }: PageProps) {
                 <BuyerAuthPrompt onNavigate={onNavigate} />
             ) : (
                 <section className="buyer-profile-layout">
-                    <div className="buyer-profile-summary">
-                        <div className="buyer-avatar">
-                            <UserBustIcon />
-                        </div>
-
-                        <div>
-                            <h2>{user.full_name}</h2>
-                            <p>{user.phone || 'Телефон не указан'}</p>
-                        </div>
-                    </div>
+                    <BuyerProfileSummary user={user} />
 
                     <div className="buyer-menu">
                         <BuyerMenuButton
@@ -448,6 +445,147 @@ function BuyerOrdersPage({ onNavigate }: PageProps) {
                 </section>
             )}
         </main>
+    );
+}
+
+function BuyerProfileSummary({ user }: { user: AuthUser }) {
+    const { updateProfile } = useAuth();
+    const [phoneDraft, setPhoneDraft] = useState(user.phone);
+    const [photoUrl, setPhotoUrl] = useState(() => loadBuyerProfilePhoto(user.id));
+    const [error, setError] = useState('');
+    const [successMessage, setSuccessMessage] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const handlePhotoChange = async (event: ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+
+        setError('');
+        setSuccessMessage('');
+
+        if (!file) {
+            return;
+        }
+
+        if (!file.type.startsWith('image/')) {
+            setError('Выберите изображение');
+            return;
+        }
+
+        try {
+            const nextPhotoUrl = await cropProfilePhoto(file);
+            saveBuyerProfilePhoto(user.id, nextPhotoUrl);
+            setPhotoUrl(nextPhotoUrl);
+            setSuccessMessage('Фото обновлено');
+        } catch {
+            setError('Не удалось загрузить фото');
+        } finally {
+            event.target.value = '';
+        }
+    };
+
+    const handleRemovePhoto = () => {
+        removeBuyerProfilePhoto(user.id);
+        setPhotoUrl('');
+        setError('');
+        setSuccessMessage('Фото удалено');
+    };
+
+    const handlePhoneSubmit = async (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+
+        const nextPhone = phoneDraft.trim();
+
+        setError('');
+        setSuccessMessage('');
+
+        if (nextPhone.length < 5) {
+            setError('Введите корректный номер телефона');
+            return;
+        }
+
+        setIsSubmitting(true);
+
+        try {
+            await updateProfile({
+                full_name: user.full_name,
+                phone: nextPhone,
+                address: user.address,
+            });
+            setSuccessMessage('Телефон сохранён');
+        } catch (caughtError) {
+            setError(
+                caughtError instanceof Error
+                    ? caughtError.message
+                    : 'Не удалось сохранить телефон',
+            );
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    return (
+        <div className="buyer-profile-summary buyer-profile-summary-editable">
+            <div className="buyer-photo-block">
+                <div className="buyer-avatar buyer-avatar-large">
+                    {photoUrl ? (
+                        <img src={photoUrl} alt={user.full_name} />
+                    ) : (
+                        <UserBustIcon />
+                    )}
+                </div>
+
+                <div className="buyer-photo-actions">
+                    <label className="buyer-photo-btn">
+                        <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handlePhotoChange}
+                        />
+                        Заменить фото
+                    </label>
+
+                    {photoUrl && (
+                        <button
+                            className="seller-danger-btn"
+                            type="button"
+                            onClick={handleRemovePhoto}
+                        >
+                            Удалить
+                        </button>
+                    )}
+                </div>
+            </div>
+
+            <div className="buyer-profile-main">
+                <h2>{user.full_name}</h2>
+                <p>{user.phone || 'Телефон не указан'}</p>
+
+                <form className="buyer-phone-form" onSubmit={handlePhoneSubmit}>
+                    <label className="form-field">
+                        <span>Телефон</span>
+                        <input
+                            type="tel"
+                            value={phoneDraft}
+                            onChange={(event) => setPhoneDraft(event.target.value)}
+                            placeholder="+7 999 123-45-67"
+                        />
+                    </label>
+
+                    {error && <div className="form-error">{error}</div>}
+                    {successMessage && (
+                        <div className="form-success">{successMessage}</div>
+                    )}
+
+                    <button
+                        className="seller-submit-btn"
+                        type="submit"
+                        disabled={isSubmitting}
+                    >
+                        {isSubmitting ? 'Сохраняем...' : 'Сохранить телефон'}
+                    </button>
+                </form>
+            </div>
+        </div>
     );
 }
 
@@ -869,6 +1007,54 @@ function shortenFullName(value: string): string {
 
 function formatPrice(value: number): string {
     return `${value.toFixed(2).replace('.', ',')} ₽`;
+}
+
+function cropProfilePhoto(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const image = new Image();
+        const objectUrl = URL.createObjectURL(file);
+
+        image.onload = () => {
+            const size = Math.min(image.naturalWidth, image.naturalHeight);
+            const sourceX = (image.naturalWidth - size) / 2;
+            const sourceY = (image.naturalHeight - size) / 2;
+            const outputSize = 256;
+
+            const canvas = document.createElement('canvas');
+            canvas.width = outputSize;
+            canvas.height = outputSize;
+
+            const context = canvas.getContext('2d');
+
+            if (!context) {
+                URL.revokeObjectURL(objectUrl);
+                reject(new Error('Canvas is not available'));
+                return;
+            }
+
+            context.drawImage(
+                image,
+                sourceX,
+                sourceY,
+                size,
+                size,
+                0,
+                0,
+                outputSize,
+                outputSize,
+            );
+
+            URL.revokeObjectURL(objectUrl);
+            resolve(canvas.toDataURL('image/jpeg', 0.9));
+        };
+
+        image.onerror = () => {
+            URL.revokeObjectURL(objectUrl);
+            reject(new Error('Image loading failed'));
+        };
+
+        image.src = objectUrl;
+    });
 }
 
 function ClipboardIcon() {
