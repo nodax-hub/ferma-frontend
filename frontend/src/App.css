@@ -28,8 +28,43 @@
 
 .brand-block {
   display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.brand-logo {
+  display: block;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
+.brand-logo-main {
+  width: 54px;
+  height: 54px;
+}
+
+.brand-logo-page {
+  width: 44px;
+  height: 44px;
+}
+
+.brand-text,
+.page-title-block > div {
+  min-width: 0;
+}
+
+.brand-text {
+  display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+.page-title-block {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
 }
 
 .brand-name {
@@ -37,6 +72,7 @@
   font-size: 32px;
   font-weight: 800;
   line-height: 1;
+  white-space: nowrap;
 }
 
 .brand-subtitle {
@@ -469,6 +505,12 @@
   height: 100%;
   object-fit: cover;
   display: block;
+}
+
+.buyer-avatar .brand-logo-avatar {
+  width: 72%;
+  height: 72%;
+  object-fit: contain;
 }
 
 .buyer-profile-summary-editable {

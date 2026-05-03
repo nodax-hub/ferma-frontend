@@ -1,4 +1,5 @@
 import './App.css';
+import fermaLogo from './assets/ferma-logo.png';
 
 import {
     useEffect,
@@ -55,6 +56,7 @@ function App() {
 }
 
 function AppRoutes() {
+    const { user } = useAuth();
     const [path, setPath] = useState(window.location.pathname);
 
     useEffect(() => {
@@ -79,6 +81,10 @@ function AppRoutes() {
     }
 
     if (path === '/checkout') {
+        if (isSellerAccount(user)) {
+            return <SellerPage path="/seller" onNavigate={navigate} />;
+        }
+
         return <CheckoutPage onNavigate={navigate} />;
     }
 
@@ -95,18 +101,38 @@ function AppRoutes() {
     }
 
     if (path === '/profile') {
+        if (user?.role === 'seller') {
+            return <SellerPage path="/seller/profile" onNavigate={navigate} />;
+        }
+
+        if (user?.role === 'admin') {
+            return <AdminPage onNavigate={navigate} />;
+        }
+
         return <ProfilePage onNavigate={navigate} />;
     }
 
     if (path === '/orders') {
+        if (isSellerAccount(user)) {
+            return <SellerPage path="/seller/orders" onNavigate={navigate} />;
+        }
+
         return <BuyerOrdersPage onNavigate={navigate} />;
     }
 
     if (path === '/cart') {
+        if (isSellerAccount(user)) {
+            return <SellerPage path="/seller" onNavigate={navigate} />;
+        }
+
         return <BuyerCartPage onNavigate={navigate} />;
     }
 
     if (path === '/addresses') {
+        if (isSellerAccount(user)) {
+            return <SellerPage path="/seller" onNavigate={navigate} />;
+        }
+
         return <BuyerAddressesPage onNavigate={navigate} />;
     }
 
@@ -117,16 +143,64 @@ type PageProps = {
     onNavigate: (path: string) => void;
 };
 
+function BrandLogo({ className = '' }: { className?: string }) {
+    return (
+        <img
+            className={['brand-logo', className].filter(Boolean).join(' ')}
+            src={fermaLogo}
+            alt=""
+            aria-hidden="true"
+        />
+    );
+}
+
+function BrandBlock({
+    name = 'ферма',
+    subtitle,
+}: {
+    name?: string;
+    subtitle: string;
+}) {
+    return (
+        <div className="brand-block">
+            <BrandLogo className="brand-logo-main" />
+
+            <div className="brand-text">
+                <span className="brand-name">{name}</span>
+                <span className="brand-subtitle">{subtitle}</span>
+            </div>
+        </div>
+    );
+}
+
+function PageTitle({
+    title,
+    subtitle,
+}: {
+    title: string;
+    subtitle?: string;
+}) {
+    return (
+        <div className="page-title-block">
+            <BrandLogo className="brand-logo-page" />
+
+            <div>
+                <h1>{title}</h1>
+                {subtitle && <p>{subtitle}</p>}
+            </div>
+        </div>
+    );
+}
+
 function ShopPage({ onNavigate }: PageProps) {
     const { user } = useAuth();
+    const ordersPath = isSellerAccount(user) ? '/seller/orders' : '/orders';
+    const profilePath = user ? getProfilePath(user.role) : '/login';
 
     return (
         <main className="page">
             <header className="page-header buyer-header">
-                <div className="brand-block">
-                    <span className="brand-name">ферма</span>
-                    <span className="brand-subtitle">фермерские продукты</span>
-                </div>
+                <BrandBlock subtitle="фермерские продукты" />
 
                 <div className="page-actions">
                     <button
@@ -134,7 +208,7 @@ function ShopPage({ onNavigate }: PageProps) {
                         type="button"
                         aria-label="Заказы"
                         title="Заказы"
-                        onClick={() => onNavigate('/orders')}
+                        onClick={() => onNavigate(ordersPath)}
                     >
                         <ClipboardIcon />
                     </button>
@@ -144,7 +218,7 @@ function ShopPage({ onNavigate }: PageProps) {
                         type="button"
                         aria-label="Личный кабинет"
                         title="Личный кабинет"
-                        onClick={() => onNavigate(user ? '/profile' : '/login')}
+                        onClick={() => onNavigate(profilePath)}
                     >
                         <UserBustIcon />
                     </button>
@@ -169,10 +243,10 @@ function AdminPage({ onNavigate }: PageProps) {
     return (
         <main className="page">
             <header className="page-header">
-                <div>
-                    <h1>Администратор</h1>
-                    <p>Вход и управление магазином</p>
-                </div>
+                <PageTitle
+                    title="Администратор"
+                    subtitle="Вход и управление магазином"
+                />
 
                 <div className="page-actions">
                     {user && (
@@ -252,10 +326,10 @@ function CheckoutPage({ onNavigate }: PageProps) {
     return (
         <main className="page">
             <header className="page-header">
-                <div>
-                    <h1>Оформление заказа</h1>
-                    <p>Проверьте корзину и заполните данные доставки</p>
-                </div>
+                <PageTitle
+                    title="Оформление заказа"
+                    subtitle="Проверьте корзину и заполните данные доставки"
+                />
 
                 <button
                     className="nav-link-btn nav-link-btn-secondary"
@@ -389,12 +463,10 @@ function SellerHomePage({ user, onNavigate }: PageProps & { user: AuthUser }) {
     return (
         <>
             <header className="page-header buyer-header">
-                <div className="brand-block">
-                    <span className="brand-name">Ферма</span>
-                    <span className="brand-subtitle">
-                        кабинет продавца натуральных продуктов
-                    </span>
-                </div>
+                <BrandBlock
+                    name="Ферма"
+                    subtitle="кабинет продавца натуральных продуктов"
+                />
 
                 <div className="page-actions">
                     <button
@@ -486,7 +558,7 @@ function SellerProfilePage({
             <section className="buyer-profile-layout">
                 <div className="buyer-profile-summary seller-profile-summary">
                     <div className="buyer-avatar">
-                        <UserBustIcon />
+                        <BrandLogo className="brand-logo-avatar" />
                     </div>
 
                     <div>
@@ -939,10 +1011,7 @@ function SellerPageHeader({
 }) {
     return (
         <header className="page-header buyer-header">
-            <div>
-                <h1>{title}</h1>
-                <p>{subtitle}</p>
-            </div>
+            <PageTitle title={title} subtitle={subtitle} />
 
             <div className="page-actions">
                 {backHome && (
@@ -1027,10 +1096,10 @@ function ProfilePage({ onNavigate }: PageProps) {
     return (
         <main className="page">
             <header className="page-header buyer-header">
-                <div>
-                    <h1>Личный кабинет</h1>
-                    {user && <p>{formatBuyerLine(user.full_name, user.phone)}</p>}
-                </div>
+                <PageTitle
+                    title="Личный кабинет"
+                    subtitle={user ? formatBuyerLine(user.full_name, user.phone) : ''}
+                />
 
                 <div className="page-actions">
                     {user && (
@@ -1197,7 +1266,7 @@ function BuyerProfileSummary({ user }: { user: AuthUser }) {
                     {photoUrl ? (
                         <img src={photoUrl} alt={user.full_name} />
                     ) : (
-                        <UserBustIcon />
+                        <BrandLogo className="brand-logo-avatar" />
                     )}
                 </div>
 
@@ -1579,10 +1648,7 @@ function BuyerPageHeader({
 }) {
     return (
         <header className="page-header buyer-header">
-            <div>
-                <h1>{title}</h1>
-                {userLine && <p>{userLine}</p>}
-            </div>
+            <PageTitle title={title} subtitle={userLine} />
 
             <div className="page-actions">
                 {backToProfile && (
@@ -1988,7 +2054,7 @@ function AuthPage({ mode, onNavigate }: AuthPageProps) {
     return (
         <main className="page">
             <header className="page-header">
-                <h1>{isRegister ? 'Регистрация' : 'Вход'}</h1>
+                <PageTitle title={isRegister ? 'Регистрация' : 'Вход'} />
 
                 <button
                     className="nav-link-btn nav-link-btn-secondary"
@@ -2199,6 +2265,23 @@ function clearFieldError(
 
         return next;
     });
+}
+
+function isSellerAccount(user: AuthUser | null): boolean {
+    return user?.role === 'seller' || user?.role === 'admin';
+}
+
+function getProfilePath(role: UserRole): string {
+    switch (role) {
+        case 'admin':
+            return '/admin';
+
+        case 'seller':
+            return '/seller/profile';
+
+        default:
+            return '/profile';
+    }
 }
 
 function getPostAuthPath(role: UserRole): string {
