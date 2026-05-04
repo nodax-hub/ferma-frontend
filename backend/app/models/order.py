@@ -10,7 +10,7 @@ class Order(Base):
     __tablename__ = "orders"
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
-    user_id: Mapped[int | None] = mapped_column(
+    user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
