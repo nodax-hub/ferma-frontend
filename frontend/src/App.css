@@ -1463,6 +1463,10 @@
   font-size: 22px;
 }
 
+.admin-panel .form-error {
+  margin: 0 0 12px;
+}
+
 .admin-empty {
   margin: 0;
   color: #777;
@@ -1536,6 +1540,20 @@
   padding: 0 10px;
   background: #fff;
   font: inherit;
+}
+
+.admin-danger-btn {
+  border: none;
+  background: transparent;
+  color: #c62828;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+}
+
+.admin-danger-btn:disabled {
+  color: #999;
+  cursor: not-allowed;
 }
 
 .seller-auth {

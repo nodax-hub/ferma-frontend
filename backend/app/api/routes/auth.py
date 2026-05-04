@@ -2,12 +2,13 @@ from datetime import timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db
 from app.core.config import settings
 from app.core.security import create_access_token, get_password_hash, verify_password
+from app.models.order import Order
 from app.models.user import User
 from app.models.user_role import UserRole
 from app.schemas.auth import Token, UserCreate, UserRead, UserUpdate
@@ -85,6 +86,31 @@ def list_users(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
 
     return db.scalars(select(User).order_by(User.created_at.desc())).all()
+
+
+@router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_user(
+    user_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> None:
+    if current_user.role != UserRole.ADMIN.value:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+
+    user = db.get(User, user_id)
+
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+
+    if user.role == UserRole.ADMIN.value:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin users cannot be deleted",
+        )
+
+    db.execute(update(Order).where(Order.user_id == user.id).values(user_id=None))
+    db.delete(user)
+    db.commit()
 
 
 @router.patch("/me", response_model=UserRead)

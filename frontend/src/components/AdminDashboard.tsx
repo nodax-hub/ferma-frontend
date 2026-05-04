@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import { fetchUsers, type AuthUser } from '../api/client';
+import { deleteUserRequest, fetchUsers, type AuthUser } from '../api/client';
 import type { OrderStatus } from '../models/Order';
 import type { Product, ProductStatus } from '../models/Product';
 import type { ProductBatch } from '../models/ProductBatch';
@@ -19,11 +19,19 @@ type AdminSection =
     | 'products';
 
 type Seller = {
-    id: string;
+    id: number;
     name: string;
     email: string;
     productCount: number;
     pendingCount: number;
+};
+
+type Buyer = {
+    id: number;
+    name: string;
+    phone: string;
+    email: string;
+    orderCount: number;
 };
 
 const adminSections: Array<{
@@ -60,6 +68,8 @@ export function AdminDashboard() {
     const { token } = useAuth();
     const [activeSection, setActiveSection] = useState<AdminSection>('review');
     const [users, setUsers] = useState<AuthUser[]>([]);
+    const [deletingUserId, setDeletingUserId] = useState<AuthUser['id'] | null>(null);
+    const [userDeleteError, setUserDeleteError] = useState('');
 
     const { state: productsState, updateProductStatus } = useProducts();
     const { state: ordersState } = useOrders();
@@ -92,20 +102,19 @@ export function AdminDashboard() {
     const adminUsers = useMemo(() => (token ? users : []), [token, users]);
 
     const sellers = useMemo(() => {
-        const sellersById = new Map(
-            adminUsers
-                .filter((user) => user.role === 'seller')
-                .map((user) => [
-                    String(user.id),
-                    {
-                        id: String(user.id),
-                        name: user.full_name,
-                        email: user.email,
-                        productCount: 0,
-                        pendingCount: 0,
-                    },
-                ]),
-        );
+        const sellersById = new Map<string, Seller>();
+
+        adminUsers
+            .filter((user) => user.role === 'seller')
+            .forEach((user) => {
+                sellersById.set(String(user.id), {
+                    id: user.id,
+                    name: user.full_name,
+                    email: user.email,
+                    productCount: 0,
+                    pendingCount: 0,
+                });
+            });
 
         productsState.products.forEach((product) => {
             const seller = sellersById.get(product.sellerId);
@@ -119,35 +128,19 @@ export function AdminDashboard() {
 
                 return;
             }
-
-            sellersById.set(product.sellerId, {
-                    id: product.sellerId,
-                    name: product.sellerId,
-                    email: '',
-                    productCount: 1,
-                    pendingCount:
-                        getProductStatus(product) === 'pending_review' ? 1 : 0,
-            });
         });
 
         return Array.from(sellersById.values());
     }, [adminUsers, productsState.products]);
 
     const buyers = useMemo(() => {
-        const buyerMap = new Map<
-            string,
-            {
-                name: string;
-                phone: string;
-                email: string;
-                orderCount: number;
-            }
-        >();
+        const buyerMap = new Map<string, Buyer>();
 
         adminUsers
             .filter((user) => user.role === 'buyer')
             .forEach((user) => {
                 buyerMap.set(user.phone || user.email || String(user.id), {
+                    id: user.id,
                     name: user.full_name,
                     phone: user.phone,
                     email: user.email,
@@ -161,19 +154,43 @@ export function AdminDashboard() {
 
             if (buyer) {
                 buyer.orderCount += 1;
-                return;
             }
-
-            buyerMap.set(key, {
-                name: order.customer.name,
-                phone: order.customer.phone,
-                email: '',
-                orderCount: 1,
-            });
         });
 
         return Array.from(buyerMap.values());
     }, [adminUsers, ordersState.orders]);
+
+    const handleDeleteUser = async (user: Pick<AuthUser, 'id' | 'full_name'>) => {
+        if (!token || deletingUserId !== null) {
+            return;
+        }
+
+        const shouldDelete = window.confirm(
+            `Удалить пользователя "${user.full_name}"? Это действие нельзя отменить.`,
+        );
+
+        if (!shouldDelete) {
+            return;
+        }
+
+        setUserDeleteError('');
+        setDeletingUserId(user.id);
+
+        try {
+            await deleteUserRequest(token, user.id);
+            setUsers((currentUsers) =>
+                currentUsers.filter((currentUser) => currentUser.id !== user.id),
+            );
+        } catch (error) {
+            setUserDeleteError(
+                error instanceof Error
+                    ? error.message
+                    : 'Не удалось удалить пользователя',
+            );
+        } finally {
+            setDeletingUserId(null);
+        }
+    };
 
     return (
         <section className="admin-dashboard">
@@ -211,11 +228,21 @@ export function AdminDashboard() {
                 )}
 
                 {activeSection === 'sellers' && (
-                    <SellersAdminList sellers={sellers} />
+                    <SellersAdminList
+                        sellers={sellers}
+                        deletingUserId={deletingUserId}
+                        error={userDeleteError}
+                        onDeleteUser={handleDeleteUser}
+                    />
                 )}
 
                 {activeSection === 'buyers' && (
-                    <BuyersAdminList buyers={buyers} />
+                    <BuyersAdminList
+                        buyers={buyers}
+                        deletingUserId={deletingUserId}
+                        error={userDeleteError}
+                        onDeleteUser={handleDeleteUser}
+                    />
                 )}
 
                 {activeSection === 'batches' && (
@@ -342,12 +369,19 @@ function OrdersAdminList({ orders }: { orders: ReturnType<typeof useOrders>['sta
 
 function SellersAdminList({
     sellers,
+    deletingUserId,
+    error,
+    onDeleteUser,
 }: {
     sellers: Seller[];
+    deletingUserId: AuthUser['id'] | null;
+    error: string;
+    onDeleteUser: (user: Pick<AuthUser, 'id' | 'full_name'>) => void;
 }) {
     return (
         <section className="admin-panel">
             <h2>Продавцы</h2>
+            {error && <p className="form-error">{error}</p>}
 
             {sellers.length === 0 ? (
                 <p className="admin-empty">Продавцов пока нет</p>
@@ -366,6 +400,21 @@ function SellersAdminList({
                                 <span className="admin-status">
                                     {seller.pendingCount} на проверке
                                 </span>
+                                <button
+                                    className="admin-danger-btn"
+                                    type="button"
+                                    disabled={deletingUserId !== null}
+                                    onClick={() =>
+                                        onDeleteUser({
+                                            id: seller.id,
+                                            full_name: seller.name,
+                                        })
+                                    }
+                                >
+                                    {deletingUserId === seller.id
+                                        ? 'Удаление...'
+                                        : 'Удалить'}
+                                </button>
                             </div>
                         </article>
                     ))}
@@ -377,17 +426,19 @@ function SellersAdminList({
 
 function BuyersAdminList({
     buyers,
+    deletingUserId,
+    error,
+    onDeleteUser,
 }: {
-    buyers: Array<{
-        name: string;
-        phone: string;
-        email: string;
-        orderCount: number;
-    }>;
+    buyers: Buyer[];
+    deletingUserId: AuthUser['id'] | null;
+    error: string;
+    onDeleteUser: (user: Pick<AuthUser, 'id' | 'full_name'>) => void;
 }) {
     return (
         <section className="admin-panel">
             <h2>Покупатели</h2>
+            {error && <p className="form-error">{error}</p>}
 
             {buyers.length === 0 ? (
                 <p className="admin-empty">Покупателей пока нет</p>
@@ -396,15 +447,33 @@ function BuyersAdminList({
                     {buyers.map((buyer) => (
                         <article
                             className="admin-list-item"
-                            key={buyer.phone || buyer.email || buyer.name}
+                            key={buyer.id}
                         >
                             <div>
                                 <h3>{buyer.name}</h3>
+                                <p>ID: {buyer.id}</p>
                                 {buyer.phone && <p>{buyer.phone}</p>}
                                 {buyer.email && <p>{buyer.email}</p>}
                             </div>
 
-                            <strong>{buyer.orderCount} заказ(ов)</strong>
+                            <div className="admin-item-side">
+                                <strong>{buyer.orderCount} заказ(ов)</strong>
+                                <button
+                                    className="admin-danger-btn"
+                                    type="button"
+                                    disabled={deletingUserId !== null}
+                                    onClick={() =>
+                                        onDeleteUser({
+                                            id: buyer.id,
+                                            full_name: buyer.name,
+                                        })
+                                    }
+                                >
+                                    {deletingUserId === buyer.id
+                                        ? 'Удаление...'
+                                        : 'Удалить'}
+                                </button>
+                            </div>
                         </article>
                     ))}
                 </div>

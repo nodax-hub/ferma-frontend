@@ -91,6 +91,18 @@ export async function fetchUsers(token: string): Promise<AuthUser[]> {
     });
 }
 
+export async function deleteUserRequest(
+    token: string,
+    userId: AuthUser['id'],
+): Promise<void> {
+    return request<void>(`/auth/users/${userId}`, {
+        method: 'DELETE',
+        headers: {
+            Authorization: `Bearer ${token}`,
+        },
+    });
+}
+
 export async function fetchProducts(): Promise<Product[]> {
     return request<Product[]>('/products');
 }
