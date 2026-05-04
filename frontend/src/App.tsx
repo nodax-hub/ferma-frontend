@@ -2192,6 +2192,16 @@ function AuthPage({ mode, onNavigate }: AuthPageProps) {
                                   ? 'Зарегистрироваться'
                                   : 'Войти'}
                         </button>
+
+                        {!isRegister && (
+                            <button
+                                className="nav-link-btn nav-link-btn-secondary auth-switch-btn"
+                                type="button"
+                                onClick={() => onNavigate('/register')}
+                            >
+                                Зарегистрироваться
+                            </button>
+                        )}
                     </form>
                 </div>
             </section>
